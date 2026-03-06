@@ -3,6 +3,17 @@
 -- Execute este script no SQL Editor do Supabase
 -- ============================================================
 
+-- Limpar tabelas antigas (ordem importa por causa das FKs)
+drop table if exists pomodoro_sessions cascade;
+drop table if exists daily_logs cascade;
+drop table if exists alarms cascade;
+drop table if exists routine_blocks cascade;
+drop table if exists chat_messages cascade;
+drop table if exists chat_channels cascade;
+drop table if exists missions cascade;
+drop table if exists tasks cascade;
+drop table if exists users cascade;
+
 -- Users (login via token — sem email/senha)
 create table if not exists users (
   id uuid primary key default gen_random_uuid(),

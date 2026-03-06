@@ -171,6 +171,53 @@ async function executeAction(action: AIAction): Promise<string> {
       return `👤 Perfil atualizado`;
     }
 
+    case 'CREATE_EXERCISE_LOG': {
+      const today = new Date().toISOString().split('T')[0];
+      const log = await db.addExerciseLog({
+        name: action.payload.name,
+        muscleGroup: action.payload.muscleGroup || 'full_body',
+        sets: action.payload.sets || [{ reps: 10 }],
+        notes: action.payload.notes,
+        date: action.payload.date || today,
+      });
+      useUserStore.getState().addXP(15, 'strength');
+      return `💪 Exercício registrado: ${log.name} (${log.sets.length} séries)`;
+    }
+
+    case 'CREATE_PROJECT': {
+      const { v4 } = await import('uuid');
+      const project = await db.addProject({
+        title: action.payload.title,
+        description: action.payload.description,
+        status: 'active',
+        deadline: action.payload.deadline,
+        progress: 0,
+        tasks: (action.payload.tasks || []).map((t: string) => ({ id: v4(), title: t, done: false })),
+      });
+      return `🗂️ Projeto criado: ${project.title}`;
+    }
+
+    case 'UPDATE_PROJECT': {
+      const p = await db.updateProject(action.payload.projectId, {
+        status: action.payload.status,
+        progress: action.payload.progress,
+        title: action.payload.title,
+      });
+      return `🗂️ Projeto atualizado: ${p.title} (${p.status})`;
+    }
+
+    case 'ADD_PROJECT_TASK': {
+      const projects = await db.getAllProjects();
+      const target = projects.find((p) => p.id === action.payload.projectId);
+      if (!target) return `⚠️ Projeto não encontrado`;
+      const { v4 } = await import('uuid');
+      const newTask = { id: v4(), title: action.payload.title, done: false };
+      const updatedTasks = [...target.tasks, newTask];
+      const progress = Math.round((updatedTasks.filter((t) => t.done).length / updatedTasks.length) * 100);
+      await db.updateProject(target.id, { tasks: updatedTasks, progress });
+      return `✅ Tarefa adicionada ao projeto: ${action.payload.title}`;
+    }
+
     default:
       return `⚠️ Ação desconhecida`;
   }

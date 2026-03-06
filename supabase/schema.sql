@@ -4,6 +4,8 @@
 -- ============================================================
 
 -- Limpar tabelas antigas (ordem importa por causa das FKs)
+drop table if exists projects cascade;
+drop table if exists exercise_logs cascade;
 drop table if exists pomodoro_sessions cascade;
 drop table if exists daily_logs cascade;
 drop table if exists alarms cascade;
@@ -147,3 +149,30 @@ create table if not exists pomodoro_sessions (
 );
 create index if not exists pomodoro_sessions_user_id_idx on pomodoro_sessions(user_id);
 create index if not exists pomodoro_sessions_started_at_idx on pomodoro_sessions(started_at);
+
+create table if not exists exercise_logs (
+  id text primary key,
+  user_id uuid not null references users(id) on delete cascade,
+  name text not null,
+  muscle_group text not null default 'full_body',
+  sets jsonb not null default '[]',
+  notes text,
+  date text not null,
+  created_at timestamptz not null default now()
+);
+create index if not exists exercise_logs_user_id_idx on exercise_logs(user_id);
+create index if not exists exercise_logs_date_idx on exercise_logs(date);
+
+create table if not exists projects (
+  id text primary key,
+  user_id uuid not null references users(id) on delete cascade,
+  title text not null,
+  description text,
+  status text not null default 'active',
+  deadline text,
+  progress integer not null default 0,
+  tasks jsonb not null default '[]',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create index if not exists projects_user_id_idx on projects(user_id);

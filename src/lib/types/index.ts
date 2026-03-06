@@ -166,6 +166,48 @@ export interface UISection {
   config?: Record<string, unknown>;
 }
 
+// ---- Exercícios ----
+export type MuscleGroup = 'chest' | 'back' | 'shoulders' | 'arms' | 'legs' | 'core' | 'cardio' | 'full_body';
+
+export interface ExerciseSet {
+  reps: number;
+  weight?: number; // kg
+  duration?: number; // segundos (para exercícios de tempo)
+}
+
+export interface ExerciseLog {
+  id: string;
+  userId: string;
+  name: string;
+  muscleGroup: MuscleGroup;
+  sets: ExerciseSet[];
+  notes?: string;
+  date: string; // YYYY-MM-DD
+  createdAt: string;
+}
+
+// ---- Projetos ----
+export type ProjectStatus = 'active' | 'paused' | 'completed' | 'cancelled';
+
+export interface ProjectTask {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
+export interface Project {
+  id: string;
+  userId: string;
+  title: string;
+  description?: string;
+  status: ProjectStatus;
+  deadline?: string; // ISO date
+  progress: number; // 0-100
+  tasks: ProjectTask[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---- Ações da IA ----
 export type AIAction =
   | { type: 'CREATE_TASK'; payload: Partial<Task> & { title: string } }
@@ -176,7 +218,11 @@ export type AIAction =
   | { type: 'CREATE_CHAT_CHANNEL'; payload: { name: string; icon: string; description: string } }
   | { type: 'ADD_ROUTINE_BLOCK'; payload: Partial<RoutineBlock> & { title: string; startTime: string; endTime: string } }
   | { type: 'SET_ALARM'; payload: Partial<Alarm> & { title: string; time: string } }
-  | { type: 'UPDATE_PROFILE'; payload: Partial<UserProfile> };
+  | { type: 'UPDATE_PROFILE'; payload: Partial<UserProfile> }
+  | { type: 'CREATE_EXERCISE_LOG'; payload: { name: string; muscleGroup: MuscleGroup; sets: ExerciseSet[]; notes?: string; date?: string } }
+  | { type: 'CREATE_PROJECT'; payload: { title: string; description?: string; deadline?: string; tasks?: string[] } }
+  | { type: 'UPDATE_PROJECT'; payload: { projectId: string; status?: ProjectStatus; progress?: number; title?: string } }
+  | { type: 'ADD_PROJECT_TASK'; payload: { projectId: string; title: string } };
 
 // ---- Resposta da IA ----
 export interface AIResponse {

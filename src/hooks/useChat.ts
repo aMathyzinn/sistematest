@@ -57,10 +57,15 @@ export function useChat(channelId: string) {
       // Preparar contexto para IA
       let pendingTasks: import('@/lib/types').Task[] = [];
       let todayMissions: import('@/lib/types').Mission[] = [];
+      let recentExercises: import('@/lib/types').ExerciseLog[] = [];
+      let activeProjects: import('@/lib/types').Project[] = [];
       try {
         pendingTasks = await db.getTasksByStatus('pending');
         const today = new Date().toISOString().split('T')[0];
         todayMissions = await db.getMissionsByDate(today);
+        recentExercises = await db.getExerciseLogs(10);
+        const allProjects = await db.getAllProjects();
+        activeProjects = allProjects.filter((p) => p.status === 'active' || p.status === 'paused');
       } catch {
         // Ignorar se DB não está pronta
       }
@@ -71,6 +76,8 @@ export function useChat(channelId: string) {
         pendingTasks,
         todayMissions,
         currentLayout: sections,
+        recentExercises,
+        activeProjects,
       });
 
       const allMessages = [...messages, userMessage];

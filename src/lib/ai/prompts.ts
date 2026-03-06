@@ -1,4 +1,4 @@
-import type { UserProfile, UserLevel, Task, Mission, UISection } from '@/lib/types';
+import type { UserProfile, UserLevel, Task, Mission, UISection, ExerciseLog, Project } from '@/lib/types';
 
 // ============================================================
 // SYSTEM PROMPT MESTRE
@@ -10,8 +10,10 @@ export function buildSystemPrompt(context: {
   pendingTasks: Task[];
   todayMissions: Mission[];
   currentLayout: UISection[];
+  recentExercises?: ExerciseLog[];
+  activeProjects?: Project[];
 }): string {
-  const { profile, level, pendingTasks, todayMissions, currentLayout } = context;
+  const { profile, level, pendingTasks, todayMissions, currentLayout, recentExercises, activeProjects } = context;
 
   const profileBlock = profile
     ? `
@@ -41,6 +43,14 @@ NÍVEL ATUAL:
 
   const layoutBlock = `LAYOUT ATUAL:\n${currentLayout.filter(s => s.visible).map(s => `- ${s.title} (${s.type})`).join('\n')}`;
 
+  const exercisesBlock = recentExercises && recentExercises.length > 0
+    ? `TREINOS RECENTES:\n${recentExercises.slice(0, 5).map(e => `- ${e.date}: ${e.name} (${e.muscleGroup}) — ${e.sets.length} séries`).join('\n')}`
+    : 'TREINOS: Nenhum treino registrado ainda.';
+
+  const projectsBlock = activeProjects && activeProjects.length > 0
+    ? `PROJETOS ATIVOS:\n${activeProjects.map(p => `- [${p.status}] ${p.title} (${p.progress}%) — ${p.tasks.filter(t => t.done).length}/${p.tasks.length} tarefas`).join('\n')}`
+    : 'PROJETOS ATIVOS: Nenhum projeto.';
+
   return `Você é o SISTEMA DE EVOLUÇÃO PESSOAL, inspirado em Solo Leveling.
 
 REGRAS — SIGA RIGOROSAMENTE:
@@ -56,6 +66,8 @@ ${levelBlock}
 ${tasksBlock}
 ${missionsBlock}
 ${layoutBlock}
+${exercisesBlock}
+${projectsBlock}
 
 FORMATO DE RESPOSTA:
 Você DEVE responder SEMPRE em JSON válido com esta estrutura:
@@ -94,12 +106,26 @@ Cada action é um objeto com "type" e "payload".
 9. UPDATE_PROFILE - atualizar perfil
    { "type": "UPDATE_PROFILE", "payload": { "profession": "string", "objectives": ["string"] } }
 
+10. CREATE_EXERCISE_LOG - registrar um exercício físico feito pelo usuário
+    { "type": "CREATE_EXERCISE_LOG", "payload": { "name": "string", "muscleGroup": "chest|back|shoulders|arms|legs|core|cardio|full_body", "sets": [{ "reps": number, "weight": number }], "notes": "string opcional", "date": "YYYY-MM-DD" } }
+
+11. CREATE_PROJECT - criar um novo projeto
+    { "type": "CREATE_PROJECT", "payload": { "title": "string", "description": "string opcional", "deadline": "YYYY-MM-DD opcional", "tasks": ["string", "string"] } }
+
+12. UPDATE_PROJECT - atualizar status ou progresso de um projeto existente
+    { "type": "UPDATE_PROJECT", "payload": { "projectId": "string", "status": "active|paused|completed|cancelled", "progress": number_opcional, "title": "string_opcional" } }
+
+13. ADD_PROJECT_TASK - adicionar uma tarefa a um projeto existente (use UPDATE_PROJECT com tasks array atualizado se necessário)
+    { "type": "ADD_PROJECT_TASK", "payload": { "projectId": "string", "title": "string" } }
+
 IMPORTANTE:
 - Sempre inclua o campo "actions" mesmo que seja array vazio []
 - Só crie actions quando fizer sentido no contexto
 - Quando o usuário pedir algo, FAÇA via actions, não apenas sugira
 - XP rewards devem ser proporcionais: tarefas simples 10-25 XP, médias 25-50 XP, difíceis 50-100 XP
 - Missões diárias devem ter 20-50 XP cada
+- Para exercícios, use CREATE_EXERCISE_LOG quando o usuário relatar um treino feito
+- Para projetos, use CREATE_PROJECT para criar e UPDATE_PROJECT para atualizar status/progresso
 
 Responda APENAS com JSON válido. Sem texto fora do JSON.`;
 }

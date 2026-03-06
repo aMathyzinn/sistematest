@@ -5,16 +5,16 @@ import {
   MessageSquare,
   LayoutDashboard,
   ListTodo,
-  Swords,
-  Clock,
+  Dumbbell,
+  FolderKanban,
 } from 'lucide-react';
 
 const tabs = [
   { href: '/chat', icon: MessageSquare, label: 'Sistema' },
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/tasks', icon: ListTodo, label: 'Tarefas' },
-  { href: '/missions', icon: Swords, label: 'Missões' },
-  { href: '/routine', icon: Clock, label: 'Rotina' },
+  { href: '/exercises', icon: Dumbbell, label: 'Treinos' },
+  { href: '/projects', icon: FolderKanban, label: 'Projetos' },
 ];
 
 export default function BottomNav() {

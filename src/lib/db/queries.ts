@@ -11,6 +11,12 @@ import type {
   PomodoroSession,
   UserProfile,
   UserLevel,
+  ExerciseLog,
+  ExerciseSet,
+  MuscleGroup,
+  Project,
+  ProjectTask,
+  ProjectStatus,
 } from '@/lib/types';
 
 // ============================================================
@@ -421,6 +427,15 @@ export async function updateChannel(id: string, updates: Partial<ChatChannel>): 
   if (error) throw error;
 }
 
+export async function deleteChannel(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('chat_channels')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', getUserId());
+  if (error) throw error;
+}
+
 // ============================================================
 // CHAT MESSAGES
 // ============================================================
@@ -628,11 +643,158 @@ export async function seedDefaultChannels(): Promise<void> {
     .eq('user_id', getUserId());
 
   if ((count || 0) === 0) {
-    await addChannel({
-      name: 'Sistema',
-      icon: '🤖',
-      description: 'Chat principal com o Sistema de Evolução',
-      isSystem: true,
-    });
+    const defaults = [
+      { name: 'Sistema', icon: '🤖', description: 'Chat principal com o Sistema de Evolução', isSystem: true },
+      { name: 'Geral', icon: '💬', description: 'Conversas gerais e dia a dia', isSystem: true },
+      { name: 'Exercícios', icon: '💪', description: 'Treinos, físico e saúde', isSystem: true },
+      { name: 'Projetos', icon: '🗂️', description: 'Gestão de projetos e trabalhos', isSystem: true },
+      { name: 'Finanças', icon: '💰', description: 'Vendas, finanças e metas financeiras', isSystem: true },
+      { name: 'Estudos', icon: '📚', description: 'Aprendizado, cursos e conhecimento', isSystem: true },
+    ];
+    for (const ch of defaults) {
+      await addChannel(ch);
+    }
   }
+}
+
+// ============================================================
+// EXERCISE LOGS
+// ============================================================
+
+function toExerciseLog(row: Record<string, unknown>): ExerciseLog {
+  return {
+    id: row.id as string,
+    userId: row.user_id as string,
+    name: row.name as string,
+    muscleGroup: (row.muscle_group as MuscleGroup) || 'full_body',
+    sets: (row.sets as ExerciseSet[]) || [],
+    notes: row.notes as string | undefined,
+    date: row.date as string,
+    createdAt: row.created_at as string,
+  };
+}
+
+export async function getExerciseLogs(limit = 50): Promise<ExerciseLog[]> {
+  const { data, error } = await supabase
+    .from('exercise_logs')
+    .select('*')
+    .eq('user_id', getUserId())
+    .order('date', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data || []).map(toExerciseLog);
+}
+
+export async function getExerciseLogsByDate(date: string): Promise<ExerciseLog[]> {
+  const { data, error } = await supabase
+    .from('exercise_logs')
+    .select('*')
+    .eq('user_id', getUserId())
+    .eq('date', date)
+    .order('created_at', { ascending: true });
+  if (error) throw error;
+  return (data || []).map(toExerciseLog);
+}
+
+export async function addExerciseLog(log: Omit<ExerciseLog, 'id' | 'userId' | 'createdAt'>): Promise<ExerciseLog> {
+  const uid = getUserId();
+  const record = {
+    id: uuidv4(),
+    user_id: uid,
+    name: log.name,
+    muscle_group: log.muscleGroup,
+    sets: log.sets,
+    notes: log.notes || null,
+    date: log.date,
+  };
+  const { data, error } = await supabase.from('exercise_logs').insert(record).select().single();
+  if (error) throw error;
+  return toExerciseLog(data);
+}
+
+export async function deleteExerciseLog(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('exercise_logs')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', getUserId());
+  if (error) throw error;
+}
+
+// ============================================================
+// PROJECTS
+// ============================================================
+
+function toProject(row: Record<string, unknown>): Project {
+  return {
+    id: row.id as string,
+    userId: row.user_id as string,
+    title: row.title as string,
+    description: row.description as string | undefined,
+    status: (row.status as ProjectStatus) || 'active',
+    deadline: row.deadline as string | undefined,
+    progress: (row.progress as number) || 0,
+    tasks: (row.tasks as ProjectTask[]) || [],
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
+  };
+}
+
+export async function getAllProjects(): Promise<Project[]> {
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('user_id', getUserId())
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(toProject);
+}
+
+export async function addProject(project: Omit<Project, 'id' | 'userId' | 'createdAt' | 'updatedAt'>): Promise<Project> {
+  const uid = getUserId();
+  const now = new Date().toISOString();
+  const record = {
+    id: uuidv4(),
+    user_id: uid,
+    title: project.title,
+    description: project.description || null,
+    status: project.status,
+    deadline: project.deadline || null,
+    progress: project.progress,
+    tasks: project.tasks,
+    created_at: now,
+    updated_at: now,
+  };
+  const { data, error } = await supabase.from('projects').insert(record).select().single();
+  if (error) throw error;
+  return toProject(data);
+}
+
+export async function updateProject(id: string, updates: Partial<Omit<Project, 'id' | 'userId' | 'createdAt'>>): Promise<Project> {
+  const record: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (updates.title !== undefined) record.title = updates.title;
+  if (updates.description !== undefined) record.description = updates.description;
+  if (updates.status !== undefined) record.status = updates.status;
+  if (updates.deadline !== undefined) record.deadline = updates.deadline;
+  if (updates.progress !== undefined) record.progress = updates.progress;
+  if (updates.tasks !== undefined) record.tasks = updates.tasks;
+  const { data, error } = await supabase
+    .from('projects')
+    .update(record)
+    .eq('id', id)
+    .eq('user_id', getUserId())
+    .select()
+    .single();
+  if (error) throw error;
+  return toProject(data);
+}
+
+export async function deleteProject(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('projects')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', getUserId());
+  if (error) throw error;
 }

@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserStore } from '@/stores/userStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { getUserByToken, createUser, seedDefaultChannels, setCurrentUserId } from '@/lib/db/queries';
-import { KeyRound, User, Target, AlertTriangle, Sparkles, LogIn } from 'lucide-react';
-import { queueOrPlayVoice, playVoiceBemVindo } from '@/lib/audio';
+import { getUserByToken, createUser, seedDefaultChannels, setCurrentUserId, updateUserApiKey } from '@/lib/db/queries';
+import { KeyRound, User, Target, AlertTriangle, Sparkles, LogIn, Key, Eye, EyeOff, ExternalLink } from 'lucide-react';
+import { queueOrPlayVoice, playVoiceBemVindo, playVoiceApiKey } from '@/lib/audio';
 
 const objectives = [
   'Organizar minha rotina',
@@ -38,6 +38,7 @@ export default function OnboardingPage() {
   // step 1 = nome + profissão (novo usuário)
   // step 2 = objetivos (novo usuário)
   // step 3 = dificuldades (novo usuário)
+  // step 4 = chave de API (novo usuário)
   const [step, setStep] = useState(0);
   const [isNewUser, setIsNewUser] = useState(false);
 
@@ -46,11 +47,13 @@ export default function OnboardingPage() {
   const [profession, setProfession] = useState('');
   const [selectedObjectives, setSelectedObjectives] = useState<string[]>([]);
   const [selectedDifficulties, setSelectedDifficulties] = useState<string[]>([]);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const { login } = useUserStore();
+  const { login, userId } = useUserStore();
   const { setApiKey } = useSettingsStore();
   const router = useRouter();
 
@@ -59,6 +62,11 @@ export default function OnboardingPage() {
     const hour = new Date().getHours();
     if (hour >= 12 && hour < 18) queueOrPlayVoice('/audios/boa_tarde.mp3');
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Play API key audio when reaching step 4
+  useEffect(() => {
+    if (step === 4) playVoiceApiKey();
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleItem = (list: string[], item: string, setter: (v: string[]) => void) => {
     setter(list.includes(item) ? list.filter((i) => i !== item) : [...list, item]);
@@ -97,7 +105,8 @@ export default function OnboardingPage() {
       login(account.id, account.token, account.profile, account.levelData);
       await seedDefaultChannels();
       playVoiceBemVindo();
-      router.replace('/dashboard');
+      // Go to API key step instead of dashboard
+      setStep(4);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes('duplicate') || msg.includes('unique')) {
@@ -112,13 +121,22 @@ export default function OnboardingPage() {
     }
   };
 
+  const handleApiKeyFinish = (skip: boolean) => {
+    if (!skip && apiKeyInput.trim()) {
+      const trimmed = apiKeyInput.trim();
+      setApiKey(trimmed);
+      if (userId) updateUserApiKey(userId, trimmed).catch(() => {});
+    }
+    router.replace('/dashboard');
+  };
+
   const canProceed = () => {
     switch (step) {
       case 0: return token.trim().length >= 3;
       case 1: return name.trim().length > 0 && profession.trim().length > 0;
       case 2: return selectedObjectives.length > 0;
       case 3: return selectedDifficulties.length > 0;
-      default: return false;
+      default: return true;
     }
   };
 
@@ -276,9 +294,77 @@ export default function OnboardingPage() {
         ))}
       </div>
     </motion.div>,
+
+    // Step 4: Chave de API
+    <motion.div
+      key="step-4"
+      initial={{ opacity: 0, x: 50 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -50 }}
+      className="space-y-6"
+    >
+      <div className="text-center space-y-2">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-accent-green/20 border border-accent-green/30">
+          <Key size={28} className="text-accent-green" />
+        </div>
+        <h2 className="text-xl font-bold text-text-primary">Chave de API</h2>
+        <p className="text-sm text-text-secondary">
+          Para usar a IA você precisa de uma chave do OpenRouter — é grátis para começar.
+        </p>
+      </div>
+
+      <div className="rounded-xl border border-border bg-bg-card p-4 space-y-2 text-xs text-text-secondary">
+        <p className="font-medium text-text-primary">Como obter sua chave:</p>
+        <ol className="list-decimal list-inside space-y-1">
+          <li>Acesse <span className="text-accent-purple-light font-mono">openrouter.ai</span></li>
+          <li>Crie uma conta gratuita</li>
+          <li>Vá em <span className="font-medium text-text-primary">Keys</span> e gere uma chave</li>
+          <li>Cole abaixo</li>
+        </ol>
+      </div>
+
+      <div className="space-y-2">
+        <label className="block text-xs font-medium text-text-secondary">Sua chave de API</label>
+        <div className="flex gap-2">
+          <input
+            type={showApiKey ? 'text' : 'password'}
+            value={apiKeyInput}
+            onChange={(e) => setApiKeyInput(e.target.value)}
+            placeholder="sk-or-v1-..."
+            autoComplete="off"
+            className="flex-1 rounded-xl border border-border bg-bg-tertiary px-4 py-3 text-sm font-mono text-text-primary placeholder:text-text-dim focus:border-accent-purple focus:outline-none focus:ring-1 focus:ring-accent-purple/50 transition-colors"
+          />
+          <button
+            onClick={() => setShowApiKey((v) => !v)}
+            className="rounded-xl border border-border px-3 text-text-dim hover:text-text-primary transition-colors"
+          >
+            {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <button
+          onClick={() => handleApiKeyFinish(false)}
+          disabled={!apiKeyInput.trim()}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-accent-green px-6 py-3 font-semibold text-white shadow-lg shadow-accent-green/20 transition-all duration-200 hover:bg-accent-green/80 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <ExternalLink size={16} />
+          Salvar e Entrar
+        </button>
+        <button
+          onClick={() => handleApiKeyFinish(true)}
+          className="text-center text-sm text-text-dim hover:text-text-secondary transition-colors"
+        >
+          Pular por agora (configurar depois em Ajustes)
+        </button>
+      </div>
+    </motion.div>,
   ];
 
-  const isLastStep = step === steps.length - 1;
+  // step 4 is the API key step — it has its own buttons, exclude from generic nav
+  const isApiKeyStep = step === 4;
+  const isLastStep = step === steps.length - 2; // step 3 is the last step with generic nav
   const isTokenStep = step === 0;
 
   return (
@@ -298,11 +384,13 @@ export default function OnboardingPage() {
         {/* Progress dots (apenas para criação de conta) */}
         {isNewUser && (
           <div className="flex justify-center gap-2">
-            {[1, 2, 3].map((s) => (
+            {[1, 2, 3, 4].map((s) => (
               <div
                 key={s}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
-                  step >= s ? 'w-8 bg-accent-purple' : 'w-1.5 bg-border'
+                  step >= s
+                    ? s === 4 ? 'w-8 bg-accent-green' : 'w-8 bg-accent-purple'
+                    : 'w-1.5 bg-border'
                 }`}
               />
             ))}
@@ -314,8 +402,8 @@ export default function OnboardingPage() {
           {steps[step]}
         </AnimatePresence>
 
-        {/* Navigation (apenas nos steps de criação) */}
-        {step > 0 && (
+        {/* Navigation (apenas nos steps de criação, exceto step 4 que tem botões próprios) */}
+        {step > 0 && !isApiKeyStep && (
           <div className="flex gap-3">
             <button
               onClick={() => setStep((s) => s - 1)}

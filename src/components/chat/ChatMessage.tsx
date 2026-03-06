@@ -59,11 +59,11 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         {/* Go-to-mission button */}
         {hasMissionCreated && (
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/missions')}
             className="mt-2 flex items-center gap-1.5 rounded-lg bg-accent-orange/10 border border-accent-orange/25 px-3 py-1.5 text-xs font-medium text-accent-orange hover:bg-accent-orange/20 transition-colors"
           >
             <Swords size={13} />
-            Ver missão
+            Ver missão ⚔️
           </button>
         )}
 

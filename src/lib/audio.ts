@@ -136,6 +136,7 @@ export const playVoiceBoaTarde        = () => queueOrPlayVoice('/audios/boa_tard
 export const playVoiceBemVindo        = () => playVoiceFile('/audios/bem-vindo.mp3');
 export const playVoiceNotification    = () => playVoiceFile('/audios/notificacao.mp3');
 export const playVoiceMissionCreated  = () => playVoiceFile('/audios/missao_criada.mp3');
+export const playVoiceApiKey          = () => queueOrPlayVoice('/audios/api_key.mp3');
 
 // ─── SFX (generated tones) ────────────────────────────────────────────────────
 

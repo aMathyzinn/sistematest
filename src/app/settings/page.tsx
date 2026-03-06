@@ -4,22 +4,47 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useUserStore } from '@/stores/userStore';
-import { updateUserApiKey } from '@/lib/db/queries';
+import { updateUserApiKey, updateUserToken, getUserByToken } from '@/lib/db/queries';
 import AppShell from '@/components/layout/AppShell';
-import { ArrowLeft, Key, Bot, Timer, Bell, Trash2, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Key, Bot, Timer, Bell, Trash2, RotateCcw, RefreshCw } from 'lucide-react';
 
 export default function SettingsPage() {
   const router = useRouter();
   const { apiKey, setApiKey, aiModel, setAiModel, pomodoro, updatePomodoro, notificationsEnabled, setNotifications } = useSettingsStore();
-  const { reset: resetUser, profile, userId } = useUserStore();
+  const { reset: resetUser, profile, userId, token: currentToken, login, level } = useUserStore();
 
   const [keyInput, setKeyInput] = useState(apiKey);
   const [showKey, setShowKey] = useState(false);
+
+  const [newToken, setNewToken] = useState('');
+  const [tokenLoading, setTokenLoading] = useState(false);
+  const [tokenMsg, setTokenMsg] = useState('');
 
   const handleSaveKey = () => {
     const trimmed = keyInput.trim();
     setApiKey(trimmed);
     if (userId) updateUserApiKey(userId, trimmed).catch(() => {});
+  };
+
+  const handleChangeToken = async () => {
+    if (!newToken.trim() || newToken.trim().length < 3 || !userId || !profile) return;
+    setTokenLoading(true);
+    setTokenMsg('');
+    try {
+      const existing = await getUserByToken(newToken.trim());
+      if (existing) {
+        setTokenMsg('Token já em uso. Escolha outro.');
+        return;
+      }
+      await updateUserToken(userId, newToken.trim());
+      login(userId, newToken.trim(), profile, level);
+      setNewToken('');
+      setTokenMsg('Token alterado com sucesso!');
+    } catch {
+      setTokenMsg('Erro ao alterar token. Tente novamente.');
+    } finally {
+      setTokenLoading(false);
+    }
   };
 
   const handleReset = () => {
@@ -168,6 +193,36 @@ export default function SettingsPage() {
               {notificationsEnabled ? 'Reconfigurar' : 'Ativar'}
             </button>
           </div>
+        </section>
+
+        {/* Alterar Token */}
+        <section className="rounded-2xl bg-bg-card border border-border p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <RefreshCw size={16} className="text-accent-green" />
+            <h3 className="text-sm font-semibold text-text-primary">Alterar Token</h3>
+          </div>
+          <p className="text-xs text-text-dim">
+            Token atual: <span className="font-mono text-text-secondary">{currentToken}</span>
+          </p>
+          <input
+            type="text"
+            value={newToken}
+            onChange={(e) => { setNewToken(e.target.value); setTokenMsg(''); }}
+            placeholder="Novo token (mín. 3 caracteres)"
+            className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2 text-sm text-text-primary placeholder:text-text-dim focus:border-accent-green focus:outline-none"
+          />
+          {tokenMsg && (
+            <p className={`text-xs ${tokenMsg.includes('sucesso') ? 'text-accent-green' : 'text-accent-red'}`}>
+              {tokenMsg}
+            </p>
+          )}
+          <button
+            onClick={handleChangeToken}
+            disabled={newToken.trim().length < 3 || tokenLoading}
+            className="w-full rounded-lg bg-accent-green/10 py-2 text-sm font-medium text-accent-green border border-accent-green/30 hover:bg-accent-green/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {tokenLoading ? 'Alterando...' : 'Confirmar Alteração'}
+          </button>
         </section>
 
         {/* Reset */}

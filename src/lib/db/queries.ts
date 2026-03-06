@@ -225,6 +225,14 @@ export async function updateUserApiKey(userId: string, apiKey: string): Promise<
     .eq('id', userId);
 }
 
+export async function updateUserToken(userId: string, newToken: string): Promise<void> {
+  const { error } = await supabase
+    .from('users')
+    .update({ token: newToken.trim(), updated_at: new Date().toISOString() })
+    .eq('id', userId);
+  if (error) throw error;
+}
+
 // ============================================================
 // TASKS
 // ============================================================

@@ -123,7 +123,10 @@ export async function playVoiceFile(src: string): Promise<void> {
     source.connect(delay2);     delay2.connect(echoGain2);  echoGain2.connect(ctx.destination);
     source.connect(delay3);     delay3.connect(echoGain3);  echoGain3.connect(ctx.destination);
 
-    source.start(ctx.currentTime);
+    await new Promise<void>((resolve) => {
+      source.onended = () => resolve();
+      source.start(ctx.currentTime);
+    });
   } catch (e) {
     console.warn('[voice]', src, e);
   }

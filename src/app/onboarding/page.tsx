@@ -99,11 +99,9 @@ export default function OnboardingPage() {
       setCurrentUserId(account.id);
       login(account.id, account.token, account.profile, account.levelData);
       await seedDefaultChannels();
-      playVoiceBemVindo();
-      // Go to API key step instead of dashboard
+      // Go to API key step, then play voices in sequence
       setStep(4);
-      // Play api_key.mp3 after bem-vindo finishes (gesture already registered)
-      setTimeout(() => playVoiceApiKey(), 2000);
+      playVoiceBemVindo().then(() => playVoiceApiKey());
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes('duplicate') || msg.includes('unique')) {

@@ -68,6 +68,7 @@ export default function TaskItem({ task, onUpdate }: TaskItemProps) {
       {/* Check button */}
       <button
         onClick={handleComplete}
+        data-sound="success"
         className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border transition-all ${
           isCompleted
             ? 'border-accent-green bg-accent-green/20 text-accent-green'

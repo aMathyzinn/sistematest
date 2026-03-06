@@ -11,6 +11,7 @@ interface SettingsState {
   aiModel: string;
   pomodoro: PomodoroSettings;
   notificationsEnabled: boolean;
+  soundEnabled: boolean;
   language: 'pt-BR' | 'en';
 
   // Actions
@@ -18,6 +19,7 @@ interface SettingsState {
   setAiModel: (model: string) => void;
   updatePomodoro: (settings: Partial<PomodoroSettings>) => void;
   setNotifications: (enabled: boolean) => void;
+  setSoundEnabled: (enabled: boolean) => void;
   setLanguage: (lang: 'pt-BR' | 'en') => void;
 }
 
@@ -33,6 +35,7 @@ export const useSettingsStore = create<SettingsState>()(
         sessionsUntilLongBreak: 4,
       },
       notificationsEnabled: false,
+      soundEnabled: true,
       language: 'pt-BR',
 
       setApiKey: (key) => set({ apiKey: key }),
@@ -42,6 +45,7 @@ export const useSettingsStore = create<SettingsState>()(
           pomodoro: { ...state.pomodoro, ...settings },
         })),
       setNotifications: (enabled) => set({ notificationsEnabled: enabled }),
+      setSoundEnabled: (enabled) => set({ soundEnabled: enabled }),
       setLanguage: (lang) => set({ language: lang }),
     }),
     {

@@ -7,11 +7,11 @@ import { useUserStore } from '@/stores/userStore';
 import { updateUserApiKey, updateUserToken, getUserByToken } from '@/lib/db/queries';
 import AppShell from '@/components/layout/AppShell';
 import { ArrowLeft, Key, Bot, Timer, Bell, Trash2, RotateCcw, RefreshCw, Volume2 } from 'lucide-react';
-import { playNotificationSound, playAlarmSound } from '@/lib/audio';
+import { playNotificationSound, playAlarmSound, playClick, playSuccess, playNavSwitch, playToggle, playDelete } from '@/lib/audio';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { apiKey, setApiKey, aiModel, setAiModel, pomodoro, updatePomodoro, notificationsEnabled, setNotifications } = useSettingsStore();
+  const { apiKey, setApiKey, aiModel, setAiModel, pomodoro, updatePomodoro, notificationsEnabled, setNotifications, soundEnabled, setSoundEnabled } = useSettingsStore();
   const { reset: resetUser, profile, userId, token: currentToken, login, level } = useUserStore();
 
   const [keyInput, setKeyInput] = useState(apiKey);
@@ -177,6 +177,47 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        {/* Sound Effects */}
+        <section className="rounded-2xl bg-bg-card border border-border p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <Volume2 size={16} className="text-accent-cyan" />
+            <h3 className="text-sm font-semibold text-text-primary">Efeitos Sonoros</h3>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-text-secondary">
+              {soundEnabled ? 'Ativados ✅' : 'Desativados'}
+            </span>
+            <button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              data-sound="none"
+              className={`relative h-6 w-11 rounded-full transition-colors ${soundEnabled ? 'bg-accent-cyan' : 'bg-bg-tertiary border border-border'}`}
+            >
+              <span
+                className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${soundEnabled ? 'translate-x-5' : 'translate-x-0.5'}`}
+              />
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { label: 'Click', fn: playClick },
+              { label: 'Navegar', fn: playNavSwitch },
+              { label: 'Toggle', fn: playToggle },
+              { label: 'Sucesso', fn: playSuccess },
+              { label: 'Deletar', fn: playDelete },
+              { label: 'Alarme', fn: playAlarmSound },
+            ] as { label: string; fn: () => void }[]).map(({ label, fn }) => (
+              <button
+                key={label}
+                onClick={fn}
+                data-sound="none"
+                className="rounded-lg bg-bg-tertiary border border-border px-2 py-2 text-xs text-text-secondary hover:text-text-primary hover:border-accent-cyan/40 transition-colors"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </section>
+
         {/* Notifications */}
         <section className="rounded-2xl bg-bg-card border border-border p-4 space-y-3">
           <div className="flex items-center gap-2">
@@ -199,12 +240,14 @@ export default function SettingsPage() {
             <span className="text-xs text-text-dim flex-1">Testar sons</span>
             <button
               onClick={playNotificationSound}
+              data-sound="none"
               className="rounded-lg bg-accent-blue/10 px-3 py-1.5 text-xs font-medium text-accent-blue border border-accent-blue/20 hover:bg-accent-blue/20 transition-colors"
             >
               🔔 Notificação
             </button>
             <button
               onClick={playAlarmSound}
+              data-sound="none"
               className="rounded-lg bg-accent-red/10 px-3 py-1.5 text-xs font-medium text-accent-red border border-accent-red/20 hover:bg-accent-red/20 transition-colors"
             >
               ⏰ Alarme

@@ -158,6 +158,7 @@ export default function MissionCard({ mission, onUpdate }: MissionCardProps) {
             <>
               <button
                 onClick={handleComplete}
+                data-sound="success"
                 className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-green/10 text-accent-green hover:bg-accent-green/20 transition-colors"
                 title="Concluir tudo"
               >
@@ -165,6 +166,7 @@ export default function MissionCard({ mission, onUpdate }: MissionCardProps) {
               </button>
               <button
                 onClick={handleFail}
+                data-sound="delete"
                 className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-red/10 text-accent-red hover:bg-accent-red/20 transition-colors"
                 title="Falhou"
               >
@@ -230,6 +232,7 @@ function StepRow({
       transition={{ delay: index * 0.04 }}
       onClick={onToggle}
       disabled={disabled}
+      data-sound="toggle"
       className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors ${
         disabled ? 'cursor-default' : 'hover:bg-bg-hover'
       }`}

@@ -32,6 +32,7 @@ export default function BottomNav() {
             <button
               key={tab.href}
               onClick={() => router.push(tab.href)}
+              data-sound={isActive ? 'none' : 'nav'}
               className={`flex flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 transition-all duration-200 ${
                 isActive
                   ? 'text-accent-purple-light'

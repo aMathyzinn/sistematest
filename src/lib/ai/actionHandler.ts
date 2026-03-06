@@ -18,12 +18,19 @@ export function parseAIResponse(rawText: string): AIResponse {
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
+    const message = parsed.message && parsed.message.trim()
+      ? parsed.message
+      : rawText.replace(/\{[\s\S]*\}/, '').trim() || '✓';
     return {
-      message: parsed.message || rawText,
+      message,
       actions: Array.isArray(parsed.actions) ? parsed.actions : [],
     };
   } catch {
-    // Se não conseguir parsear, retornar como mensagem simples
+    // JSON truncado — tentar extrair a message manualmente
+    const msgMatch = rawText.match(/"message"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+    if (msgMatch) {
+      return { message: msgMatch[1], actions: [] };
+    }
     return { message: rawText, actions: [] };
   }
 }

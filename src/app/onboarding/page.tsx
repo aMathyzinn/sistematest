@@ -1,12 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserStore } from '@/stores/userStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { getUserByToken, createUser, seedDefaultChannels, setCurrentUserId } from '@/lib/db/queries';
 import { KeyRound, User, Target, AlertTriangle, Sparkles, LogIn } from 'lucide-react';
+import { playVoiceBoaTarde } from '@/lib/audio';
 
 const objectives = [
   'Organizar minha rotina',
@@ -52,6 +53,12 @@ export default function OnboardingPage() {
   const { login } = useUserStore();
   const { setApiKey } = useSettingsStore();
   const router = useRouter();
+
+  // Afternoon greeting when landing on the token page
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour >= 12 && hour < 18) playVoiceBoaTarde();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleItem = (list: string[], item: string, setter: (v: string[]) => void) => {
     setter(list.includes(item) ? list.filter((i) => i !== item) : [...list, item]);

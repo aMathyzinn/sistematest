@@ -7,7 +7,7 @@ import { useUserStore } from '@/stores/userStore';
 import { updateUserApiKey, updateUserToken, getUserByToken } from '@/lib/db/queries';
 import AppShell from '@/components/layout/AppShell';
 import { ArrowLeft, Key, Bot, Timer, Bell, Trash2, RotateCcw, RefreshCw, Volume2 } from 'lucide-react';
-import { playNotificationSound, playAlarmSound, playClick, playSuccess, playNavSwitch, playToggle, playDelete } from '@/lib/audio';
+import { playNotificationSound, playAlarmSound, playClick, playSuccess, playNavSwitch, playToggle, playDelete, playVoiceNotification } from '@/lib/audio';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -64,6 +64,7 @@ export default function SettingsPage() {
     if (typeof Notification !== 'undefined') {
       const result = await Notification.requestPermission();
       setNotifications(result === 'granted');
+      if (result === 'granted') playVoiceNotification();
     }
   };
 

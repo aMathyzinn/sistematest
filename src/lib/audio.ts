@@ -1,6 +1,7 @@
 /**
- * Web Audio API sound effects.
- * All tones are generated programmatically — no audio files needed.
+ * Web Audio API sound effects + narrated voice playback with echo.
+ * All tones are generated programmatically — no audio files needed for SFX.
+ * Voice lines are loaded from /audios/*.mp3 and passed through an echo chain.
  */
 
 function getAudioContext(): AudioContext | null {
@@ -32,6 +33,87 @@ function beep(
   osc.start(startTime);
   osc.stop(startTime + duration);
 }
+
+// ─── Voice file cache ────────────────────────────────────────────────────────
+const audioBufferCache: Map<string, AudioBuffer> = new Map();
+
+async function loadAudioBuffer(ctx: AudioContext, src: string): Promise<AudioBuffer> {
+  if (audioBufferCache.has(src)) return audioBufferCache.get(src)!;
+  const res = await fetch(src);
+  const arrayBuf = await res.arrayBuffer();
+  const decoded = await ctx.decodeAudioData(arrayBuf);
+  audioBufferCache.set(src, decoded);
+  return decoded;
+}
+
+/**
+ * Play a narrated voice MP3 with a light echo effect.
+ * Only plays if soundEnabled in settingsStore is true.
+ * Returns a Promise that resolves when playback ends (or on error).
+ */
+export async function playVoiceFile(src: string): Promise<void> {
+  // Dynamically import to avoid circular deps / SSR issues
+  const { useSettingsStore } = await import('@/stores/settingsStore');
+  if (!useSettingsStore.getState().soundEnabled) return;
+
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  try {
+    const buffer = await loadAudioBuffer(ctx, src);
+
+    // Dry path
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
+    const dryGain = ctx.createGain();
+    dryGain.gain.value = 0.9;
+
+    // Echo 1 — 260 ms
+    const delay1 = ctx.createDelay(2);
+    delay1.delayTime.value = 0.26;
+    const echoGain1 = ctx.createGain();
+    echoGain1.gain.value = 0.32;
+
+    // Echo 2 — 520 ms
+    const delay2 = ctx.createDelay(2);
+    delay2.delayTime.value = 0.52;
+    const echoGain2 = ctx.createGain();
+    echoGain2.gain.value = 0.14;
+
+    // Echo 3 — 780 ms (tail)
+    const delay3 = ctx.createDelay(2);
+    delay3.delayTime.value = 0.78;
+    const echoGain3 = ctx.createGain();
+    echoGain3.gain.value = 0.06;
+
+    // Routing
+    source.connect(dryGain);    dryGain.connect(ctx.destination);
+    source.connect(delay1);     delay1.connect(echoGain1);   echoGain1.connect(ctx.destination);
+    source.connect(delay2);     delay2.connect(echoGain2);   echoGain2.connect(ctx.destination);
+    source.connect(delay3);     delay3.connect(echoGain3);   echoGain3.connect(ctx.destination);
+
+    source.start(ctx.currentTime);
+
+    await new Promise<void>((resolve) => {
+      source.onended = () => {
+        setTimeout(() => { ctx.close(); resolve(); }, 1000);
+      };
+    });
+  } catch (e) {
+    console.warn('[voice]', src, e);
+    ctx.close();
+  }
+}
+
+// ─── Named voice helpers ──────────────────────────────────────────────────────
+export const playVoiceMissionComplete    = () => playVoiceFile('/audios/missao_concluida.mp3');
+export const playVoiceAllMissionsDone    = () => playVoiceFile('/audios/missoes_concluidas.mp3');
+export const playVoiceBoaTarde           = () => playVoiceFile('/audios/boa_tarde.mp3');
+export const playVoiceNotification       = () => playVoiceFile('/audios/notificacao.mp3');
+export const playVoiceMissionCreated     = () => playVoiceFile('/audios/missao_criada.mp3');
+
+// ─── SFX (generated tones) ────────────────────────────────────────────────────
 
 /** Very short soft tick — generic button click */
 export function playClick(): void {
@@ -85,7 +167,7 @@ export function playNotificationSound(): void {
   const ctx = getAudioContext();
   if (!ctx) return;
   const now = ctx.currentTime;
-  beep(ctx, 880,  'sine', now,       0.15, 0.4);
+  beep(ctx, 880,  'sine', now,        0.15, 0.4);
   beep(ctx, 1100, 'sine', now + 0.18, 0.15, 0.35);
   setTimeout(() => ctx.close(), 800);
 }

@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Swords, Brain, Zap, Shield, Check, X, ChevronDown, Circle, CheckCircle2 } from 'lucide-react';
 import * as db from '@/lib/db/queries';
 import { useUserStore } from '@/stores/userStore';
+import { playVoiceMissionComplete, playVoiceAllMissionsDone } from '@/lib/audio';
 
 const missionTypeConfig = {
   physical:     { icon: Swords,  color: 'text-accent-orange', bg: 'bg-accent-orange/10', label: 'Físico' },
@@ -64,6 +65,14 @@ export default function MissionCard({ mission, onUpdate }: MissionCardProps) {
         missionsCompleted: (log?.missionsCompleted || 0) + 1,
         xpEarned: (log?.xpEarned || 0) + mission.xpReward,
       });
+      // Check if all available missions are now done
+      const allMissions = await db.getAllMissions();
+      const stillActive = allMissions.filter((m) => m.status === 'pending' && m.id !== mission.id);
+      if (stillActive.length === 0) {
+        playVoiceAllMissionsDone();
+      } else {
+        playVoiceMissionComplete();
+      }
     }
     onUpdate?.();
   };
@@ -83,6 +92,14 @@ export default function MissionCard({ mission, onUpdate }: MissionCardProps) {
       missionsCompleted: (log?.missionsCompleted || 0) + 1,
       xpEarned: (log?.xpEarned || 0) + mission.xpReward,
     });
+    // Check if all available missions are now done
+    const allMissions = await db.getAllMissions();
+    const stillActive = allMissions.filter((m) => m.status === 'pending' && m.id !== mission.id);
+    if (stillActive.length === 0) {
+      playVoiceAllMissionsDone();
+    } else {
+      playVoiceMissionComplete();
+    }
     onUpdate?.();
   };
 

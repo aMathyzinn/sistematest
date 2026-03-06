@@ -3,6 +3,7 @@ import type { AIAction, AIResponse, UserAttributes } from '@/lib/types';
 import { useUserStore } from '@/stores/userStore';
 import { useUIStore } from '@/stores/uiStore';
 import * as db from '@/lib/db/queries';
+import { playVoiceMissionCreated } from '@/lib/audio';
 
 // ============================================================
 // PARSER DE RESPOSTA DA IA
@@ -96,6 +97,7 @@ async function executeAction(action: AIAction): Promise<string> {
         progress: 0,
         date: today,
       });
+      playVoiceMissionCreated();
       return `⚔️ Missão criada: ${mission.title} (${steps.length} etapas)`;
     }
 

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserStore } from '@/stores/userStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { getUserByToken, createUser, seedDefaultChannels, setCurrentUserId } from '@/lib/db/queries';
 import { KeyRound, User, Target, AlertTriangle, Sparkles, LogIn } from 'lucide-react';
 
@@ -49,6 +50,7 @@ export default function OnboardingPage() {
   const [error, setError] = useState('');
 
   const { login } = useUserStore();
+  const { setApiKey } = useSettingsStore();
   const router = useRouter();
 
   const toggleItem = (list: string[], item: string, setter: (v: string[]) => void) => {
@@ -65,6 +67,7 @@ export default function OnboardingPage() {
         // Usuário encontrado — logar direto
         setCurrentUserId(existing.id);
         login(existing.id, existing.token, existing.profile, existing.levelData);
+        if (existing.apiKey) setApiKey(existing.apiKey);
         router.replace('/dashboard');
       } else {
         // Token novo — criar conta

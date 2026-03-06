@@ -147,6 +147,7 @@ function toPomodoroSession(r: Record<string, unknown>): PomodoroSession {
 export interface UserAccount {
   id: string;
   token: string;
+  apiKey: string;
   profile: UserProfile;
   levelData: UserLevel;
 }
@@ -155,6 +156,7 @@ function toUserAccount(r: Record<string, unknown>): UserAccount {
   return {
     id: r.id as string,
     token: r.token as string,
+    apiKey: (r.api_key as string) || '',
     profile: {
       name: r.name as string,
       profession: (r.profession as string) || '',
@@ -201,6 +203,7 @@ export async function createUser(
       difficulties,
       interests: [],
       level_data: defaultLevel,
+      api_key: '',
     })
     .select()
     .single();
@@ -212,6 +215,13 @@ export async function updateUserLevel(userId: string, levelData: UserLevel): Pro
   await supabase
     .from('users')
     .update({ level_data: levelData, updated_at: new Date().toISOString() })
+    .eq('id', userId);
+}
+
+export async function updateUserApiKey(userId: string, apiKey: string): Promise<void> {
+  await supabase
+    .from('users')
+    .update({ api_key: apiKey, updated_at: new Date().toISOString() })
     .eq('id', userId);
 }
 

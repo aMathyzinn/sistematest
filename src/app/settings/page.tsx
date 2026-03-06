@@ -4,19 +4,22 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useUserStore } from '@/stores/userStore';
+import { updateUserApiKey } from '@/lib/db/queries';
 import AppShell from '@/components/layout/AppShell';
 import { ArrowLeft, Key, Bot, Timer, Bell, Trash2, RotateCcw } from 'lucide-react';
 
 export default function SettingsPage() {
   const router = useRouter();
   const { apiKey, setApiKey, aiModel, setAiModel, pomodoro, updatePomodoro, notificationsEnabled, setNotifications } = useSettingsStore();
-  const { reset: resetUser, profile } = useUserStore();
+  const { reset: resetUser, profile, userId } = useUserStore();
 
   const [keyInput, setKeyInput] = useState(apiKey);
   const [showKey, setShowKey] = useState(false);
 
   const handleSaveKey = () => {
-    setApiKey(keyInput.trim());
+    const trimmed = keyInput.trim();
+    setApiKey(trimmed);
+    if (userId) updateUserApiKey(userId, trimmed).catch(() => {});
   };
 
   const handleReset = () => {

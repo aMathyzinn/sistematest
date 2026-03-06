@@ -111,7 +111,7 @@ export default function OnboardingPage() {
         setStep(0);
         setIsNewUser(false);
       } else {
-        setError('Erro ao criar conta. Tente novamente.');
+        setError(`Erro: ${msg}`);
       }
     } finally {
       setLoading(false);

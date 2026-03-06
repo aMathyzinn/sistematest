@@ -56,6 +56,7 @@ function toTask(r: Record<string, unknown>): Task {
 }
 
 function toMission(r: Record<string, unknown>): Mission {
+  const steps = (r.steps as import('@/lib/types').MissionStep[]) || [];
   return {
     id: r.id as string,
     title: r.title as string,
@@ -65,8 +66,9 @@ function toMission(r: Record<string, unknown>): Mission {
     date: r.date as string,
     xpReward: r.xp_reward as number,
     attributeBonus: {},
-    progress: r.progress as number | undefined,
-    target: r.target as number | undefined,
+    steps,
+    progress: steps.length > 0 ? steps.filter(s => s.done).length : (r.progress as number | undefined),
+    target: steps.length > 0 ? steps.length : (r.target as number | undefined),
     createdAt: r.created_at as string,
     completedAt: r.completed_at as string | undefined,
   };
@@ -355,6 +357,7 @@ export async function getAllMissions(): Promise<Mission[]> {
 }
 
 export async function addMission(mission: Omit<Mission, 'id' | 'createdAt'>): Promise<Mission> {
+  const steps = mission.steps || [];
   const newMission = {
     id: uuidv4(),
     user_id: getUserId(),
@@ -364,8 +367,9 @@ export async function addMission(mission: Omit<Mission, 'id' | 'createdAt'>): Pr
     status: mission.status,
     date: mission.date,
     xp_reward: mission.xpReward,
-    progress: mission.progress || 0,
-    target: mission.target || null,
+    steps,
+    progress: steps.length > 0 ? 0 : (mission.progress || 0),
+    target: steps.length > 0 ? steps.length : (mission.target || null),
   };
   const { data, error } = await supabase.from('missions').insert(newMission).select().single();
   if (error) throw error;
@@ -377,6 +381,7 @@ export async function updateMission(id: string, updates: Partial<Mission>): Prom
   if (updates.title !== undefined) patch.title = updates.title;
   if (updates.status !== undefined) patch.status = updates.status;
   if (updates.progress !== undefined) patch.progress = updates.progress;
+  if (updates.steps !== undefined) patch.steps = updates.steps;
   if (updates.completedAt !== undefined) patch.completed_at = updates.completedAt;
 
   const { data, error } = await supabase

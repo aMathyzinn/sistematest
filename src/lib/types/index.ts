@@ -53,6 +53,15 @@ export interface Task {
 export type MissionType = 'physical' | 'mental' | 'productivity' | 'discipline';
 export type MissionStatus = 'pending' | 'completed' | 'failed';
 
+export interface MissionStep {
+  id: string;
+  title: string;      // e.g. "50 flexões declinadas"
+  done: boolean;
+  target?: number;    // e.g. 50
+  unit?: string;      // e.g. "reps", "min", "séries"
+  progress?: number;  // parcial dentro do step
+}
+
 export interface Mission {
   id: string;
   title: string;
@@ -61,8 +70,9 @@ export interface Mission {
   status: MissionStatus;
   xpReward: number;
   attributeBonus: Partial<UserAttributes>;
-  target?: number; // ex: 25 flexões
-  progress?: number; // ex: 10/25
+  steps?: MissionStep[];  // exercícios/tarefas estruturados
+  target?: number;        // total de steps (auto-calculado)
+  progress?: number;      // steps concluídos
   date: string; // YYYY-MM-DD
   createdAt: string;
   completedAt?: string;

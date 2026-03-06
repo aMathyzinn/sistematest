@@ -85,8 +85,9 @@ Cada action é um objeto com "type" e "payload".
 2. COMPLETE_TASK - marcar tarefa como concluída
    { "type": "COMPLETE_TASK", "payload": { "taskId": "string" } }
 
-3. CREATE_MISSION - criar uma missão
-   { "type": "CREATE_MISSION", "payload": { "title": "string", "description": "string", "type": "physical|mental|productivity|discipline", "xpReward": number, "attributeBonus": { "discipline": 0, "focus": 0, "consistency": 0, "strength": 0, "knowledge": 0 }, "target": number_opcional } }
+3. CREATE_MISSION - criar uma missão com etapas estruturadas
+   { "type": "CREATE_MISSION", "payload": { "title": "string", "description": "string curta (max 1 frase)", "type": "physical|mental|productivity|discipline", "xpReward": number, "attributeBonus": { "discipline": 0, "focus": 0, "consistency": 0, "strength": 0, "knowledge": 0 }, "steps": [ { "id": "1", "title": "string (ex: 3x12 supino com halteres)", "done": false, "target": 12, "unit": "reps" } ] } }
+   IMPORTANTE: USE SEMPRE o campo "steps" com array de exercícios/etapas individuais. NUNCA coloque séries/exercícios no campo description. Cada exercício = 1 step. Ex: "3x12 supino" = 1 step com target:3 e unit:"séries".
 
 4. AWARD_XP - dar XP ao usuário
    { "type": "AWARD_XP", "payload": { "amount": number, "attribute": "discipline|focus|consistency|strength|knowledge" } }

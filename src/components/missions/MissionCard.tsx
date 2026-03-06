@@ -1,16 +1,24 @@
 'use client';
 
-import type { Mission } from '@/lib/types';
-import { motion } from 'framer-motion';
-import { Swords, Brain, Zap, Shield, Check, X } from 'lucide-react';
+import { useState } from 'react';
+import type { Mission, MissionStep } from '@/lib/types';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Swords, Brain, Zap, Shield, Check, X, ChevronDown, Circle, CheckCircle2 } from 'lucide-react';
 import * as db from '@/lib/db/queries';
 import { useUserStore } from '@/stores/userStore';
 
 const missionTypeConfig = {
-  physical: { icon: Swords, color: 'accent-orange', label: 'Físico' },
-  mental: { icon: Brain, color: 'accent-cyan', label: 'Mental' },
-  productivity: { icon: Zap, color: 'accent-blue', label: 'Produtividade' },
-  discipline: { icon: Shield, color: 'accent-red', label: 'Disciplina' },
+  physical:     { icon: Swords,  color: 'text-accent-orange', bg: 'bg-accent-orange/10', label: 'Físico' },
+  mental:       { icon: Brain,   color: 'text-accent-cyan',   bg: 'bg-accent-cyan/10',   label: 'Mental' },
+  productivity: { icon: Zap,     color: 'text-accent-blue',   bg: 'bg-accent-blue/10',   label: 'Produtividade' },
+  discipline:   { icon: Shield,  color: 'text-accent-red',    bg: 'bg-accent-red/10',    label: 'Disciplina' },
+};
+
+const progressColor = {
+  physical:     'bg-accent-orange',
+  mental:       'bg-accent-cyan',
+  productivity: 'bg-accent-blue',
+  discipline:   'bg-accent-red',
 };
 
 interface MissionCardProps {
@@ -23,22 +31,58 @@ export default function MissionCard({ mission, onUpdate }: MissionCardProps) {
   const { addXP } = useUserStore();
   const isCompleted = mission.status === 'completed';
   const isFailed = mission.status === 'failed';
+  const hasSteps = (mission.steps?.length || 0) > 0;
+  const [expanded, setExpanded] = useState(!isCompleted && !isFailed);
+
+  const doneSteps = mission.steps?.filter((s) => s.done).length ?? 0;
+  const totalSteps = mission.steps?.length ?? 0;
+  const progressPercent = totalSteps > 0
+    ? Math.round((doneSteps / totalSteps) * 100)
+    : mission.target
+    ? Math.min(Math.round(((mission.progress || 0) / mission.target) * 100), 100)
+    : 0;
+
+  const handleToggleStep = async (step: MissionStep) => {
+    if (isCompleted || isFailed) return;
+    const updatedSteps = (mission.steps || []).map((s) =>
+      s.id === step.id ? { ...s, done: !s.done } : s
+    );
+    const newDone = updatedSteps.filter((s) => s.done).length;
+    const allDone = newDone === updatedSteps.length;
+
+    await db.updateMission(mission.id, {
+      steps: updatedSteps,
+      progress: newDone,
+      ...(allDone ? { status: 'completed', completedAt: new Date().toISOString() } : {}),
+    });
+
+    if (allDone) {
+      addXP(mission.xpReward, Object.keys(mission.attributeBonus || {})[0] as keyof import('@/lib/types').UserAttributes | undefined);
+      const today = new Date().toISOString().split('T')[0];
+      const log = await db.getDailyLog(today);
+      await db.upsertDailyLog(today, {
+        missionsCompleted: (log?.missionsCompleted || 0) + 1,
+        xpEarned: (log?.xpEarned || 0) + mission.xpReward,
+      });
+    }
+    onUpdate?.();
+  };
 
   const handleComplete = async () => {
     if (isCompleted || isFailed) return;
+    const allDoneSteps = (mission.steps || []).map((s) => ({ ...s, done: true }));
     await db.updateMission(mission.id, {
       status: 'completed',
       completedAt: new Date().toISOString(),
+      ...(hasSteps ? { steps: allDoneSteps, progress: allDoneSteps.length } : {}),
     });
     addXP(mission.xpReward, Object.keys(mission.attributeBonus || {})[0] as keyof import('@/lib/types').UserAttributes | undefined);
-
     const today = new Date().toISOString().split('T')[0];
     const log = await db.getDailyLog(today);
     await db.upsertDailyLog(today, {
       missionsCompleted: (log?.missionsCompleted || 0) + 1,
       xpEarned: (log?.xpEarned || 0) + mission.xpReward,
     });
-
     onUpdate?.();
   };
 
@@ -47,36 +91,31 @@ export default function MissionCard({ mission, onUpdate }: MissionCardProps) {
     onUpdate?.();
   };
 
-  const progressPercent = mission.target
-    ? Math.min(((mission.progress || 0) / mission.target) * 100, 100)
-    : 0;
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-xl border p-3 transition-all ${
+      className={`rounded-xl border overflow-hidden transition-all ${
         isCompleted
           ? 'border-accent-green/30 bg-accent-green/5'
           : isFailed
-          ? 'border-accent-red/30 bg-accent-red/5 opacity-60'
-          : 'border-border bg-bg-card hover:border-' + config.color + '/30'
+          ? 'border-accent-red/20 bg-accent-red/5 opacity-60'
+          : 'border-border bg-bg-card'
       }`}
     >
-      <div className="flex items-start gap-3">
-        {/* Icon */}
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-${config.color}/10`}>
-          <config.icon size={18} className={`text-${config.color}`} />
+      {/* Header */}
+      <div className="flex items-start gap-3 p-3">
+        <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${config.bg}`}>
+          <config.icon size={16} className={config.color} />
         </div>
 
-        {/* Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <div>
-              <p className={`text-sm font-medium ${isCompleted ? 'line-through text-text-dim' : 'text-text-primary'}`}>
+            <div className="min-w-0">
+              <p className={`text-sm font-medium leading-tight ${isCompleted ? 'line-through text-text-dim' : 'text-text-primary'}`}>
                 {mission.title}
               </p>
-              <span className={`inline-block mt-0.5 text-[10px] font-medium text-${config.color}`}>
+              <span className={`inline-block mt-0.5 text-[10px] font-medium ${config.color}`}>
                 {config.label}
               </span>
             </div>
@@ -85,45 +124,135 @@ export default function MissionCard({ mission, onUpdate }: MissionCardProps) {
             </span>
           </div>
 
-          {mission.description && (
+          {/* Description (only if no steps, or if it's a short note) */}
+          {mission.description && !hasSteps && (
             <p className="mt-1 text-xs text-text-dim">{mission.description}</p>
           )}
 
           {/* Progress bar */}
-          {mission.target && (
+          {(hasSteps || mission.target) && (
             <div className="mt-2">
-              <div className="flex justify-between text-[10px] text-text-dim mb-1">
-                <span>{mission.progress || 0}/{mission.target}</span>
-                <span>{Math.round(progressPercent)}%</span>
+              <div className="flex items-center justify-between text-[10px] text-text-dim mb-1">
+                <span>
+                  {hasSteps
+                    ? `${doneSteps}/${totalSteps} etapas`
+                    : `${mission.progress || 0}/${mission.target}`}
+                </span>
+                <span>{progressPercent}%</span>
               </div>
-              <div className="h-1.5 w-full rounded-full bg-bg-tertiary">
-                <div
-                  className={`h-full rounded-full bg-${config.color} transition-all duration-500`}
-                  style={{ width: `${progressPercent}%` }}
+              <div className="h-1.5 w-full rounded-full bg-bg-tertiary overflow-hidden">
+                <motion.div
+                  className={`h-full rounded-full ${isCompleted ? 'bg-accent-green' : progressColor[mission.type]}`}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPercent}%` }}
+                  transition={{ duration: 0.4 }}
                 />
               </div>
             </div>
           )}
         </div>
 
-        {/* Actions */}
-        {!isCompleted && !isFailed && (
-          <div className="flex flex-col gap-1">
+        {/* Action buttons */}
+        <div className="flex flex-col gap-1 shrink-0">
+          {!isCompleted && !isFailed && (
+            <>
+              <button
+                onClick={handleComplete}
+                className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-green/10 text-accent-green hover:bg-accent-green/20 transition-colors"
+                title="Concluir tudo"
+              >
+                <Check size={13} />
+              </button>
+              <button
+                onClick={handleFail}
+                className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-red/10 text-accent-red hover:bg-accent-red/20 transition-colors"
+                title="Falhou"
+              >
+                <X size={13} />
+              </button>
+            </>
+          )}
+          {hasSteps && (
             <button
-              onClick={handleComplete}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-green/10 text-accent-green hover:bg-accent-green/20 transition-colors"
+              onClick={() => setExpanded(!expanded)}
+              className={`flex h-7 w-7 items-center justify-center rounded-lg text-text-dim hover:text-text-secondary transition-all ${expanded ? 'rotate-180' : ''}`}
             >
-              <Check size={14} />
+              <ChevronDown size={14} />
             </button>
-            <button
-              onClick={handleFail}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-red/10 text-accent-red hover:bg-accent-red/20 transition-colors"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
+
+      {/* Steps list */}
+      <AnimatePresence initial={false}>
+        {hasSteps && expanded && (
+          <motion.div
+            key="steps"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden border-t border-border/50"
+          >
+            <div className="px-3 py-2 space-y-1">
+              {mission.steps!.map((step, i) => (
+                <StepRow
+                  key={step.id}
+                  step={step}
+                  index={i}
+                  disabled={isCompleted || isFailed}
+                  onToggle={() => handleToggleStep(step)}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
+
+function StepRow({
+  step,
+  index,
+  disabled,
+  onToggle,
+}: {
+  step: MissionStep;
+  index: number;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <motion.button
+      initial={{ opacity: 0, x: -8 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.04 }}
+      onClick={onToggle}
+      disabled={disabled}
+      className={`flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left transition-colors ${
+        disabled ? 'cursor-default' : 'hover:bg-bg-hover'
+      }`}
+    >
+      {step.done ? (
+        <CheckCircle2 size={16} className="text-accent-green shrink-0" />
+      ) : (
+        <Circle size={16} className="text-text-dim shrink-0" />
+      )}
+      <div className="flex-1 min-w-0">
+        <span className={`text-xs ${step.done ? 'line-through text-text-dim' : 'text-text-secondary'}`}>
+          {step.title}
+        </span>
+        {step.target && step.unit && !step.done && (
+          <span className="ml-1.5 text-[10px] text-text-dim">
+            {step.target} {step.unit}
+          </span>
+        )}
+      </div>
+      {step.done && (
+        <span className="text-[10px] text-accent-green shrink-0">✓</span>
+      )}
+    </motion.button>
+  );
+}
+

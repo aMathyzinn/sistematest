@@ -62,6 +62,7 @@ create table if not exists missions (
   progress integer default 0,
   target integer,
   icon text,
+  steps jsonb not null default '[]',
   created_at timestamptz not null default now(),
   completed_at timestamptz,
   failed_at timestamptz

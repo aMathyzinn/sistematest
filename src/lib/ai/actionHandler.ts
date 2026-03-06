@@ -82,6 +82,8 @@ async function executeAction(action: AIAction): Promise<string> {
 
     case 'CREATE_MISSION': {
       const today = new Date().toISOString().split('T')[0];
+      const rawSteps = (action.payload as Record<string, unknown>).steps as import('@/lib/types').MissionStep[] | undefined;
+      const steps = (rawSteps || []).map((s, i) => ({ ...s, id: s.id || String(i + 1), done: false }));
       const mission = await db.addMission({
         title: action.payload.title,
         description: action.payload.description || '',
@@ -89,11 +91,12 @@ async function executeAction(action: AIAction): Promise<string> {
         status: 'pending',
         xpReward: action.payload.xpReward || 30,
         attributeBonus: action.payload.attributeBonus || {},
-        target: action.payload.target,
+        steps,
+        target: steps.length || action.payload.target,
         progress: 0,
         date: today,
       });
-      return `⚔️ Missão criada: ${mission.title}`;
+      return `⚔️ Missão criada: ${mission.title} (${steps.length} etapas)`;
     }
 
     case 'AWARD_XP': {

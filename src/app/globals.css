@@ -1,0 +1,195 @@
+@import "tailwindcss";
+
+/* ============================================================
+   SISTEMA DE EVOLUÇÃO PESSOAL — DESIGN SYSTEM
+   Inspirado em Solo Leveling: cores escuras, roxo/azul neon
+   ============================================================ */
+
+:root {
+  /* Cores base */
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #111118;
+  --bg-tertiary: #1a1a25;
+  --bg-card: #14141f;
+  --bg-hover: #1e1e2e;
+
+  /* Texto */
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-dim: #64748b;
+  --text-accent: #a78bfa;
+
+  /* Cores de destaque */
+  --accent-purple: #7c3aed;
+  --accent-purple-light: #a78bfa;
+  --accent-purple-dark: #5b21b6;
+  --accent-blue: #3b82f6;
+  --accent-blue-light: #60a5fa;
+  --accent-cyan: #06b6d4;
+  --accent-green: #10b981;
+  --accent-yellow: #f59e0b;
+  --accent-red: #ef4444;
+  --accent-orange: #f97316;
+
+  /* XP / Nível */
+  --xp-bar-bg: #1e1b4b;
+  --xp-bar-fill: linear-gradient(90deg, #7c3aed, #3b82f6);
+  --xp-glow: 0 0 20px rgba(124, 58, 237, 0.4);
+
+  /* Borders */
+  --border-color: #1e293b;
+  --border-glow: rgba(124, 58, 237, 0.3);
+
+  /* Sombras */
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-glow-purple: 0 0 30px rgba(124, 58, 237, 0.2);
+  --shadow-glow-blue: 0 0 30px rgba(59, 130, 246, 0.2);
+
+  /* Tamanho safe area (mobile) */
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --bottom-nav-height: 72px;
+}
+
+@theme inline {
+  --color-bg-primary: var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-tertiary: var(--bg-tertiary);
+  --color-bg-card: var(--bg-card);
+  --color-bg-hover: var(--bg-hover);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-dim: var(--text-dim);
+  --color-text-accent: var(--text-accent);
+  --color-accent-purple: var(--accent-purple);
+  --color-accent-purple-light: var(--accent-purple-light);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-blue-light: var(--accent-blue-light);
+  --color-accent-cyan: var(--accent-cyan);
+  --color-accent-green: var(--accent-green);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-accent-red: var(--accent-red);
+  --color-accent-orange: var(--accent-orange);
+  --color-border: var(--border-color);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* ---- Base ---- */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-geist-sans, 'Inter', system-ui, -apple-system, sans-serif);
+  min-height: 100dvh;
+  overscroll-behavior: none;
+}
+
+/* ---- Scrollbar custom ---- */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--accent-purple-dark);
+  border-radius: 4px;
+}
+
+/* ---- Glow effects ---- */
+.glow-purple {
+  box-shadow: var(--shadow-glow-purple);
+}
+
+.glow-blue {
+  box-shadow: var(--shadow-glow-blue);
+}
+
+.glow-text {
+  text-shadow: 0 0 10px rgba(124, 58, 237, 0.6), 0 0 40px rgba(124, 58, 237, 0.2);
+}
+
+/* ---- XP Bar ---- */
+.xp-bar {
+  background: var(--xp-bar-bg);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.xp-bar-fill {
+  background: var(--xp-bar-fill);
+  border-radius: 9999px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: var(--xp-glow);
+}
+
+/* ---- Animações ---- */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(124, 58, 237, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(124, 58, 237, 0.6);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes level-up {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(124, 58, 237, 0);
+  }
+  50% {
+    transform: scale(1.2);
+    box-shadow: 0 0 60px rgba(124, 58, 237, 0.8);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+  }
+}
+
+.animate-slide-up {
+  animation: slide-up 0.4s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s infinite;
+}
+
+.animate-level-up {
+  animation: level-up 0.8s ease-out;
+}
+
+/* ---- Padding inferior para BottomNav ---- */
+.pb-safe {
+  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 16px);
+}

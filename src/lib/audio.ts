@@ -100,23 +100,23 @@ export async function playVoiceFile(src: string): Promise<void> {
     const dryGain = ctx.createGain();
     dryGain.gain.value = 0.9;
 
-    // Echo 1 — 260 ms
+    // Echo 1 — 280 ms
     const delay1 = ctx.createDelay(2);
-    delay1.delayTime.value = 0.26;
+    delay1.delayTime.value = 0.28;
     const echoGain1 = ctx.createGain();
-    echoGain1.gain.value = 0.32;
+    echoGain1.gain.value = 0.10;
 
-    // Echo 2 — 520 ms
+    // Echo 2 — 560 ms
     const delay2 = ctx.createDelay(2);
-    delay2.delayTime.value = 0.52;
+    delay2.delayTime.value = 0.56;
     const echoGain2 = ctx.createGain();
-    echoGain2.gain.value = 0.14;
+    echoGain2.gain.value = 0.04;
 
-    // Echo 3 — 780 ms (tail)
+    // Echo 3 — 840 ms (tail)
     const delay3 = ctx.createDelay(2);
-    delay3.delayTime.value = 0.78;
+    delay3.delayTime.value = 0.84;
     const echoGain3 = ctx.createGain();
-    echoGain3.gain.value = 0.06;
+    echoGain3.gain.value = 0.015;
 
     // Routing
     source.connect(dryGain);    dryGain.connect(ctx.destination);

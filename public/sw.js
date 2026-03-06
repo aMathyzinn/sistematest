@@ -42,6 +42,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // Only cache GET requests over http/https
+  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) {
+    return;
+  }
+
   // Cache first for static assets
   event.respondWith(
     caches.match(event.request).then((cached) => {

@@ -6,7 +6,8 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useUserStore } from '@/stores/userStore';
 import { updateUserApiKey, updateUserToken, getUserByToken } from '@/lib/db/queries';
 import AppShell from '@/components/layout/AppShell';
-import { ArrowLeft, Key, Bot, Timer, Bell, Trash2, RotateCcw, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Key, Bot, Timer, Bell, Trash2, RotateCcw, RefreshCw, Volume2 } from 'lucide-react';
+import { playNotificationSound, playAlarmSound } from '@/lib/audio';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -191,6 +192,22 @@ export default function SettingsPage() {
               className="rounded-lg bg-accent-yellow/10 px-3 py-1.5 text-xs font-medium text-accent-yellow"
             >
               {notificationsEnabled ? 'Reconfigurar' : 'Ativar'}
+            </button>
+          </div>
+          <div className="flex items-center gap-2 pt-1">
+            <Volume2 size={14} className="text-text-dim" />
+            <span className="text-xs text-text-dim flex-1">Testar sons</span>
+            <button
+              onClick={playNotificationSound}
+              className="rounded-lg bg-accent-blue/10 px-3 py-1.5 text-xs font-medium text-accent-blue border border-accent-blue/20 hover:bg-accent-blue/20 transition-colors"
+            >
+              🔔 Notificação
+            </button>
+            <button
+              onClick={playAlarmSound}
+              className="rounded-lg bg-accent-red/10 px-3 py-1.5 text-xs font-medium text-accent-red border border-accent-red/20 hover:bg-accent-red/20 transition-colors"
+            >
+              ⏰ Alarme
             </button>
           </div>
         </section>

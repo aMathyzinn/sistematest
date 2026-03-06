@@ -92,7 +92,8 @@ export default function SettingsPage() {
             onChange={(e) => setAiModel(e.target.value)}
             className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2 text-sm text-text-primary focus:border-accent-purple focus:outline-none"
           >
-            <option value="openai/gpt-4o-mini">GPT-4o Mini (rápido, barato)</option>
+            <option value="openai/gpt-5-mini">GPT-5 Mini (rápido, barato)</option>
+            <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
             <option value="openai/gpt-4o">GPT-4o (inteligente)</option>
             <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
             <option value="anthropic/claude-3-haiku">Claude 3 Haiku (rápido)</option>

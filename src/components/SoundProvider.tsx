@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { playClick, playNavSwitch, playToggle, playSuccess, playDelete } from '@/lib/audio';
+import { playClick, playNavSwitch, playToggle, playSuccess, playDelete, markUserGesture } from '@/lib/audio';
 
 const soundMap: Record<string, () => void> = {
   nav:     playNavSwitch,
@@ -13,9 +13,7 @@ const soundMap: Record<string, () => void> = {
 
 /**
  * Attaches a single document-level click listener (capture phase).
- * Reads the `data-sound` attribute from the closest interactive element
- * and plays the matching sound. `data-sound="none"` silences that element.
- * Default (no attribute) → playClick().
+ * Also marks the first user gesture so queued voices can play.
  */
 export default function SoundProvider({ children }: { children: React.ReactNode }) {
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
@@ -24,6 +22,8 @@ export default function SoundProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
+      // Always mark gesture so queued voices drain regardless of soundEnabled
+      markUserGesture();
       if (!enabledRef.current) return;
       const target = e.target as HTMLElement;
       const el = target.closest<HTMLElement>('button, a, [role="button"]');

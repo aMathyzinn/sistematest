@@ -4,6 +4,34 @@
  * Voice lines are loaded from /audios/*.mp3 and passed through an echo chain.
  */
 
+// ─── Autoplay gate ────────────────────────────────────────────────────────────
+// Browsers block AudioContext until a user gesture occurs.
+// Voices queued before a gesture are held here and drained on first interaction.
+let _hasGesture = false;
+const _voiceQueue: string[] = [];
+
+/** Called by SoundProvider on first user click — drains the pending voice queue. */
+export function markUserGesture(): void {
+  if (_hasGesture) return;
+  _hasGesture = true;
+  const pending = _voiceQueue.splice(0);
+  for (const src of pending) {
+    playVoiceFile(src);
+  }
+}
+
+/**
+ * If a user gesture has already occurred, plays immediately.
+ * Otherwise queues the voice to fire on the next user interaction.
+ */
+export function queueOrPlayVoice(src: string): void {
+  if (_hasGesture) {
+    playVoiceFile(src);
+  } else {
+    _voiceQueue.push(src);
+  }
+}
+
 function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   try {
@@ -60,6 +88,9 @@ export async function playVoiceFile(src: string): Promise<void> {
   if (!ctx) return;
 
   try {
+    // Resume if browser started the context in suspended state
+    if (ctx.state === 'suspended') await ctx.resume();
+
     const buffer = await loadAudioBuffer(ctx, src);
 
     // Dry path
@@ -109,7 +140,8 @@ export async function playVoiceFile(src: string): Promise<void> {
 // ─── Named voice helpers ──────────────────────────────────────────────────────
 export const playVoiceMissionComplete    = () => playVoiceFile('/audios/missao_concluida.mp3');
 export const playVoiceAllMissionsDone    = () => playVoiceFile('/audios/missoes_concluidas.mp3');
-export const playVoiceBoaTarde           = () => playVoiceFile('/audios/boa_tarde.mp3');
+export const playVoiceBoaTarde           = () => queueOrPlayVoice('/audios/boa_tarde.mp3');
+export const playVoiceBemVindo           = () => playVoiceFile('/audios/bem-vindo.mp3');
 export const playVoiceNotification       = () => playVoiceFile('/audios/notificacao.mp3');
 export const playVoiceMissionCreated     = () => playVoiceFile('/audios/missao_criada.mp3');
 

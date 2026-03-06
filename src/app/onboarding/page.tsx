@@ -7,7 +7,7 @@ import { useUserStore } from '@/stores/userStore';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { getUserByToken, createUser, seedDefaultChannels, setCurrentUserId } from '@/lib/db/queries';
 import { KeyRound, User, Target, AlertTriangle, Sparkles, LogIn } from 'lucide-react';
-import { playVoiceBoaTarde } from '@/lib/audio';
+import { queueOrPlayVoice, playVoiceBemVindo } from '@/lib/audio';
 
 const objectives = [
   'Organizar minha rotina',
@@ -54,10 +54,10 @@ export default function OnboardingPage() {
   const { setApiKey } = useSettingsStore();
   const router = useRouter();
 
-  // Afternoon greeting when landing on the token page
+  // Queue afternoon greeting — will fire on first button click (autoplay policy)
   useEffect(() => {
     const hour = new Date().getHours();
-    if (hour >= 12 && hour < 18) playVoiceBoaTarde();
+    if (hour >= 12 && hour < 18) queueOrPlayVoice('/audios/boa_tarde.mp3');
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleItem = (list: string[], item: string, setter: (v: string[]) => void) => {
@@ -96,6 +96,7 @@ export default function OnboardingPage() {
       setCurrentUserId(account.id);
       login(account.id, account.token, account.profile, account.levelData);
       await seedDefaultChannels();
+      playVoiceBemVindo();
       router.replace('/dashboard');
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);

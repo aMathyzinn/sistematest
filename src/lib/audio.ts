@@ -10,6 +10,7 @@
 
 // ─── Singleton AudioContext ───────────────────────────────────────────────────
 let _sharedCtx: AudioContext | null = null;
+let _analyser: AnalyserNode | null = null;
 
 function getCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -17,10 +18,19 @@ function getCtx(): AudioContext | null {
   try {
     _sharedCtx = new (window.AudioContext ||
       (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    _analyser = _sharedCtx.createAnalyser();
+    _analyser.fftSize = 256;
+    _analyser.smoothingTimeConstant = 0.8;
+    _analyser.connect(_sharedCtx.destination);
     return _sharedCtx;
   } catch {
     return null;
   }
+}
+
+/** Returns the shared AnalyserNode (or null if not yet created). */
+export function getAnalyser(): AnalyserNode | null {
+  return _analyser;
 }
 
 // ─── Autoplay gate ────────────────────────────────────────────────────────────
@@ -122,6 +132,8 @@ export async function playVoiceFile(src: string): Promise<void> {
     source.connect(delay1);     delay1.connect(echoGain1);  echoGain1.connect(ctx.destination);
     source.connect(delay2);     delay2.connect(echoGain2);  echoGain2.connect(ctx.destination);
     source.connect(delay3);     delay3.connect(echoGain3);  echoGain3.connect(ctx.destination);
+    // Also feed into the analyser so visualisers can read it
+    if (_analyser) source.connect(_analyser);
 
     await new Promise<void>((resolve) => {
       source.onended = () => resolve();

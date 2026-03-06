@@ -8,6 +8,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { getUserByToken, createUser, seedDefaultChannels, setCurrentUserId, updateUserApiKey } from '@/lib/db/queries';
 import { KeyRound, User, Target, AlertTriangle, Sparkles, LogIn, Key, Eye, EyeOff, ExternalLink } from 'lucide-react';
 import { queueOrPlayVoice, playVoiceBemVindo, playVoiceApiKey } from '@/lib/audio';
+import AudioSpectrum from '@/components/ui/AudioSpectrum';
 
 const objectives = [
   'Organizar minha rotina',
@@ -296,8 +297,12 @@ export default function OnboardingPage() {
       initial={{ opacity: 0, x: 50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
-      className="space-y-6"
+      className="relative space-y-6 overflow-hidden rounded-2xl"
     >
+      {/* Spectrum visualiser background */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 opacity-40">
+        <AudioSpectrum color="#86efac" mirror />
+      </div>
       <div className="text-center space-y-2">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-accent-green/20 border border-accent-green/30">
           <Key size={28} className="text-accent-green" />

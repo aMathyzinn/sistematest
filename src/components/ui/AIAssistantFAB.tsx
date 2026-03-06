@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bot, ChevronDown, Send, Square } from 'lucide-react';
+import { Bot, ChevronDown, Send, Square, Sparkles } from 'lucide-react';
 import { useChatStore } from '@/stores/chatStore';
 import * as db from '@/lib/db/queries';
 
@@ -149,8 +149,15 @@ export default function AIAssistantFAB() {
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
               {messages.length === 0 && !isLoading && (
                 <div className="flex flex-col items-center justify-center h-full text-center gap-2">
-                  <span className="text-4xl">🤖</span>
-                  <p className="text-sm text-text-secondary max-w-[240px]">
+                  <div className="relative">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-accent-purple/20 to-indigo-500/10 border border-accent-purple/20">
+                      <Bot size={28} className="text-accent-purple-light" />
+                    </div>
+                    <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-accent-purple">
+                      <Sparkles size={10} className="text-white" />
+                    </div>
+                  </div>
+                  <p className="text-sm text-text-secondary max-w-[240px] mt-1">
                     {hint ?? 'Como posso ajudar você agora?'}
                   </p>
                   {hint && (
@@ -159,7 +166,7 @@ export default function AIAssistantFAB() {
                         setInput(hint);
                         inputRef.current?.focus();
                       }}
-                      className="mt-1 rounded-xl border border-accent-purple/30 bg-accent-purple/10 px-3 py-1.5 text-xs text-accent-purple-light"
+                      className="mt-1 rounded-2xl border border-accent-purple/30 bg-accent-purple/10 px-3 py-1.5 text-xs text-accent-purple-light"
                     >
                       {hint}
                     </button>

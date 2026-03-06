@@ -5,10 +5,34 @@ import AppShell from '@/components/layout/AppShell';
 import ChatWindow from '@/components/chat/ChatWindow';
 import type { ChatChannel } from '@/lib/types';
 import * as db from '@/lib/db/queries';
-import { MessageSquare, ArrowLeft, Plus, Trash2, X } from 'lucide-react';
+import { MessageSquare, ArrowLeft, Plus, Trash2, X, Bot, Brain, Target, Zap, BookOpen, Gamepad2, FileText, Star, Rocket, Music, Trophy, Lightbulb, Hash } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const EMOJIS = ['💬', '🎯', '🔥', '⚡', '🧠', '🎮', '📝', '🌟', '🚀', '🎵', '🏆', '💡'];
+
+const SYSTEM_ICONS: Record<string, React.ReactNode> = {
+  '🤖': <Bot size={18} />,
+  '💬': <MessageSquare size={18} />,
+  '🧠': <Brain size={18} />,
+  '🎯': <Target size={18} />,
+  '⚡': <Zap size={18} />,
+  '📝': <FileText size={18} />,
+  '🌟': <Star size={18} />,
+  '🚀': <Rocket size={18} />,
+  '🎵': <Music size={18} />,
+  '🏆': <Trophy size={18} />,
+  '💡': <Lightbulb size={18} />,
+  '📚': <BookOpen size={18} />,
+  '🎮': <Gamepad2 size={18} />,
+};
+
+function ChannelIcon({ icon, isSystem, size = 18 }: { icon: string; isSystem: boolean; size?: number }) {
+  if (isSystem && SYSTEM_ICONS[icon]) {
+    return <>{SYSTEM_ICONS[icon]}</>;
+  }
+  // User channels: render emoji in a styled span
+  return <span style={{ fontSize: size - 2, lineHeight: 1 }}>{icon}</span>;
+}
 
 export default function ChatPage() {
   const [channels, setChannels] = useState<ChatChannel[]>([]);
@@ -68,17 +92,21 @@ export default function ChatPage() {
     return (
       <AppShell showHeader={false} showNav={false}>
         <div className="flex h-[100dvh] flex-col">
-          <div className="flex items-center gap-3 border-b border-border bg-bg-secondary/90 backdrop-blur-lg px-4 py-3">
+          <div className="flex items-center gap-3 border-b border-border/60 bg-bg-secondary/95 backdrop-blur-lg px-4 py-3">
             <button
               onClick={() => setActiveChannel(null)}
-              className="rounded-lg p-1.5 text-text-dim hover:text-text-primary transition-colors"
+              className="rounded-xl p-2 text-text-dim hover:text-text-primary hover:bg-bg-hover transition-colors"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={18} />
             </button>
-            <span className="text-lg">{activeChannel.icon}</span>
-            <div>
-              <p className="text-sm font-semibold text-text-primary">{activeChannel.name}</p>
-              <p className="text-[10px] text-text-dim">{activeChannel.description}</p>
+            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-purple/20 to-indigo-500/10 border border-accent-purple/20 text-accent-purple-light">
+              <ChannelIcon icon={activeChannel.icon} isSystem={activeChannel.isSystem} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-text-primary leading-tight">{activeChannel.name}</p>
+              {activeChannel.description && (
+                <p className="text-[10px] text-text-dim truncate">{activeChannel.description}</p>
+              )}
             </div>
           </div>
           <div className="flex-1 overflow-hidden">
@@ -169,16 +197,16 @@ export default function ChatPage() {
                   setActiveChannel(channel);
                 }}
                 onContextMenu={(e) => { e.preventDefault(); setLongPress(channel.id === longPress ? null : channel.id); }}
-                className="flex w-full items-center gap-3 rounded-xl bg-bg-card border border-border px-4 py-3 text-left transition-all hover:border-accent-purple/30 hover:bg-bg-hover"
+                className="flex w-full items-center gap-3 rounded-2xl bg-bg-card border border-border/50 px-4 py-3.5 text-left transition-all hover:border-accent-purple/40 hover:bg-bg-hover active:scale-[0.99]"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-purple/10 text-lg">
-                  {channel.icon}
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-purple/15 to-indigo-500/10 border border-accent-purple/15 text-accent-purple-light">
+                  <ChannelIcon icon={channel.icon} isSystem={channel.isSystem} size={20} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-text-primary">{channel.name}</p>
-                  <p className="text-xs text-text-dim truncate">{channel.description}</p>
+                  <p className="text-sm font-semibold text-text-primary">{channel.name}</p>
+                  <p className="text-xs text-text-dim truncate mt-0.5">{channel.description}</p>
                 </div>
-                <MessageSquare size={14} className="text-text-dim" />
+                <Hash size={13} className="text-text-dim/50 shrink-0" />
               </button>
               {/* Delete button on long press / right click */}
               {longPress === channel.id && !channel.isSystem && (
@@ -186,7 +214,7 @@ export default function ChatPage() {
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
                   onClick={() => handleDelete(channel.id)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-lg bg-accent-red/10 border border-accent-red/30 px-2 py-1 text-xs text-accent-red"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 rounded-xl bg-accent-red/10 border border-accent-red/30 px-2.5 py-1.5 text-xs text-accent-red font-medium"
                 >
                   <Trash2 size={12} /> Apagar
                 </motion.button>
@@ -196,7 +224,7 @@ export default function ChatPage() {
 
           {channels.length === 0 && (
             <div className="py-12 text-center">
-              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-accent-purple/10">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-accent-purple/10 border border-accent-purple/15">
                 <MessageSquare size={24} className="text-accent-purple-light" />
               </div>
               <p className="text-sm text-text-secondary">Nenhum chat ainda</p>

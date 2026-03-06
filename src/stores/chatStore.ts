@@ -26,6 +26,8 @@ interface ChatStreamState {
 
   // Internal abort ref (not serializable — kept as plain object)
   _abort: AbortController | null;
+  // Tracks channels currently being loaded to prevent concurrent fetches
+  _loadingChannels: Set<string>;
 
   // Actions
   loadMessages: (channelId: string) => Promise<void>;
@@ -43,16 +45,33 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
   error: null,
   actionResults: [],
   _abort: null,
+  _loadingChannels: new Set<string>(),
 
   loadMessages: async (channelId) => {
+    const state = get();
+    // Prevent concurrent fetches for the same channel
+    if (state._loadingChannels.has(channelId)) return;
+    state._loadingChannels.add(channelId);
     try {
       const msgs = await db.getMessagesByChannel(channelId);
       const sorted = msgs.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-      set((s) => ({
-        messagesByChannel: { ...s.messagesByChannel, [channelId]: sorted },
-      }));
+      set((s) => {
+        // Merge: DB is authoritative for persisted messages, but keep any
+        // locally-appended optimistic messages that haven't been saved yet.
+        const existing = s.messagesByChannel[channelId] || [];
+        const dbIds = new Set(sorted.map((m) => m.id));
+        const optimistic = existing.filter((m) => !dbIds.has(m.id));
+        const merged = [...sorted, ...optimistic].sort((a, b) =>
+          a.createdAt.localeCompare(b.createdAt)
+        );
+        return {
+          messagesByChannel: { ...s.messagesByChannel, [channelId]: merged },
+        };
+      });
     } catch (e) {
       console.error('Erro ao carregar mensagens:', e);
+    } finally {
+      get()._loadingChannels.delete(channelId);
     }
   },
 

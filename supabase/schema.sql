@@ -3,9 +3,24 @@
 -- Execute este script no SQL Editor do Supabase
 -- ============================================================
 
+-- Users (login via token — sem email/senha)
+create table if not exists users (
+  id uuid primary key default gen_random_uuid(),
+  token text unique not null,
+  name text not null,
+  profession text not null default '',
+  objectives text[] not null default '{}',
+  difficulties text[] not null default '{}',
+  interests text[] not null default '{}',
+  level_data jsonb not null default '{"level":1,"xp":0,"xpToNext":100,"totalXp":0,"attributes":{"discipline":1,"focus":1,"consistency":1,"strength":1,"knowledge":1}}',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 -- Tasks
 create table if not exists tasks (
   id text primary key,
+  user_id uuid not null references users(id) on delete cascade,
   title text not null,
   description text,
   category text not null default 'custom',
@@ -18,10 +33,12 @@ create table if not exists tasks (
   parent_id text,
   "order" integer not null default 0
 );
+create index if not exists tasks_user_id_idx on tasks(user_id);
 
 -- Missions
 create table if not exists missions (
   id text primary key,
+  user_id uuid not null references users(id) on delete cascade,
   title text not null,
   description text,
   type text not null default 'daily',
@@ -35,10 +52,12 @@ create table if not exists missions (
   completed_at timestamptz,
   failed_at timestamptz
 );
+create index if not exists missions_user_id_idx on missions(user_id);
 
 -- Chat Channels
 create table if not exists chat_channels (
   id text primary key,
+  user_id uuid not null references users(id) on delete cascade,
   name text not null,
   icon text,
   description text,
@@ -46,6 +65,7 @@ create table if not exists chat_channels (
   last_message_at timestamptz,
   created_at timestamptz not null default now()
 );
+create index if not exists chat_channels_user_id_idx on chat_channels(user_id);
 
 -- Chat Messages
 create table if not exists chat_messages (
@@ -62,6 +82,7 @@ create index if not exists chat_messages_created_at_idx on chat_messages(created
 -- Routine Blocks
 create table if not exists routine_blocks (
   id text primary key,
+  user_id uuid not null references users(id) on delete cascade,
   title text not null,
   start_time text not null,
   end_time text not null,
@@ -70,10 +91,12 @@ create table if not exists routine_blocks (
   days integer[],
   created_at timestamptz not null default now()
 );
+create index if not exists routine_blocks_user_id_idx on routine_blocks(user_id);
 
 -- Alarms
 create table if not exists alarms (
   id text primary key,
+  user_id uuid not null references users(id) on delete cascade,
   title text not null,
   time text not null,
   is_active boolean default true,
@@ -82,27 +105,33 @@ create table if not exists alarms (
   type text not null default 'reminder',
   created_at timestamptz not null default now()
 );
+create index if not exists alarms_user_id_idx on alarms(user_id);
 
 -- Daily Logs
 create table if not exists daily_logs (
   id text primary key,
-  date text not null unique,
+  user_id uuid not null references users(id) on delete cascade,
+  date text not null,
   tasks_completed integer not null default 0,
   missions_completed integer not null default 0,
   pomodoro_sessions integer not null default 0,
   xp_earned integer not null default 0,
   notes text,
   mood integer,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique(user_id, date)
 );
+create index if not exists daily_logs_user_id_idx on daily_logs(user_id);
 
 -- Pomodoro Sessions
 create table if not exists pomodoro_sessions (
   id text primary key,
+  user_id uuid not null references users(id) on delete cascade,
   type text not null default 'focus',
   duration integer not null,
   task_id text,
   started_at timestamptz not null default now(),
   completed_at timestamptz
 );
+create index if not exists pomodoro_sessions_user_id_idx on pomodoro_sessions(user_id);
 create index if not exists pomodoro_sessions_started_at_idx on pomodoro_sessions(started_at);

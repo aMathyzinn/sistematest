@@ -9,7 +9,24 @@ import type {
   Alarm,
   DailyLog,
   PomodoroSession,
+  UserProfile,
+  UserLevel,
 } from '@/lib/types';
+
+// ============================================================
+// SESSÃO ATUAL — definido no login, reutilizado por todas as queries
+// ============================================================
+
+let _currentUserId: string | null = null;
+
+export function setCurrentUserId(id: string | null) {
+  _currentUserId = id;
+}
+
+function getUserId(): string {
+  if (!_currentUserId) throw new Error('Usuário não autenticado');
+  return _currentUserId;
+}
 
 // ============================================================
 // HELPERS — mapear snake_case do Postgres → camelCase do app
@@ -124,31 +141,124 @@ function toPomodoroSession(r: Record<string, unknown>): PomodoroSession {
 }
 
 // ============================================================
+// AUTH — login por token
+// ============================================================
+
+export interface UserAccount {
+  id: string;
+  token: string;
+  profile: UserProfile;
+  levelData: UserLevel;
+}
+
+function toUserAccount(r: Record<string, unknown>): UserAccount {
+  return {
+    id: r.id as string,
+    token: r.token as string,
+    profile: {
+      name: r.name as string,
+      profession: (r.profession as string) || '',
+      objectives: (r.objectives as string[]) || [],
+      difficulties: (r.difficulties as string[]) || [],
+      interests: (r.interests as string[]) || [],
+      createdAt: r.created_at as string,
+    },
+    levelData: r.level_data as UserLevel,
+  };
+}
+
+export async function getUserByToken(token: string): Promise<UserAccount | null> {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('token', token.trim())
+    .maybeSingle();
+  if (error || !data) return null;
+  return toUserAccount(data as Record<string, unknown>);
+}
+
+export async function createUser(
+  token: string,
+  name: string,
+  profession: string,
+  objectives: string[],
+  difficulties: string[]
+): Promise<UserAccount> {
+  const defaultLevel: UserLevel = {
+    level: 1,
+    xp: 0,
+    xpToNext: 100,
+    totalXp: 0,
+    attributes: { discipline: 1, focus: 1, consistency: 1, strength: 1, knowledge: 1 },
+  };
+  const { data, error } = await supabase
+    .from('users')
+    .insert({
+      token: token.trim(),
+      name: name.trim(),
+      profession: profession.trim(),
+      objectives,
+      difficulties,
+      interests: [],
+      level_data: defaultLevel,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return toUserAccount(data as Record<string, unknown>);
+}
+
+export async function updateUserLevel(userId: string, levelData: UserLevel): Promise<void> {
+  await supabase
+    .from('users')
+    .update({ level_data: levelData, updated_at: new Date().toISOString() })
+    .eq('id', userId);
+}
+
+// ============================================================
 // TASKS
 // ============================================================
 
 export async function getAllTasks(): Promise<Task[]> {
-  const { data, error } = await supabase.from('tasks').select('*').order('order');
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', getUserId())
+    .order('order');
   if (error) throw error;
   return (data || []).map(toTask);
 }
 
 export async function getTasksByStatus(status: Task['status']): Promise<Task[]> {
-  const { data, error } = await supabase.from('tasks').select('*').eq('status', status).order('order');
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', getUserId())
+    .eq('status', status)
+    .order('order');
   if (error) throw error;
   return (data || []).map(toTask);
 }
 
 export async function getTasksByCategory(category: Task['category']): Promise<Task[]> {
-  const { data, error } = await supabase.from('tasks').select('*').eq('category', category).order('order');
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('user_id', getUserId())
+    .eq('category', category)
+    .order('order');
   if (error) throw error;
   return (data || []).map(toTask);
 }
 
 export async function addTask(task: Omit<Task, 'id' | 'createdAt' | 'order'>): Promise<Task> {
-  const { count } = await supabase.from('tasks').select('*', { count: 'exact', head: true });
+  const { count } = await supabase
+    .from('tasks')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', getUserId());
   const newTask = {
     id: uuidv4(),
+    user_id: getUserId(),
     title: task.title,
     description: task.description || null,
     category: task.category,
@@ -176,13 +286,23 @@ export async function updateTask(id: string, updates: Partial<Task>): Promise<Ta
   if (updates.dueDate !== undefined) patch.due_date = updates.dueDate;
   if (updates.order !== undefined) patch.order = updates.order;
 
-  const { data, error } = await supabase.from('tasks').update(patch).eq('id', id).select().single();
+  const { data, error } = await supabase
+    .from('tasks')
+    .update(patch)
+    .eq('id', id)
+    .eq('user_id', getUserId())
+    .select()
+    .single();
   if (error) throw error;
   return toTask(data as Record<string, unknown>);
 }
 
 export async function deleteTask(id: string): Promise<void> {
-  const { error } = await supabase.from('tasks').delete().eq('id', id);
+  const { error } = await supabase
+    .from('tasks')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', getUserId());
   if (error) throw error;
 }
 
@@ -191,13 +311,21 @@ export async function deleteTask(id: string): Promise<void> {
 // ============================================================
 
 export async function getMissionsByDate(date: string): Promise<Mission[]> {
-  const { data, error } = await supabase.from('missions').select('*').eq('date', date);
+  const { data, error } = await supabase
+    .from('missions')
+    .select('*')
+    .eq('user_id', getUserId())
+    .eq('date', date);
   if (error) throw error;
   return (data || []).map(toMission);
 }
 
 export async function getAllMissions(): Promise<Mission[]> {
-  const { data, error } = await supabase.from('missions').select('*').order('created_at', { ascending: false });
+  const { data, error } = await supabase
+    .from('missions')
+    .select('*')
+    .eq('user_id', getUserId())
+    .order('created_at', { ascending: false });
   if (error) throw error;
   return (data || []).map(toMission);
 }
@@ -205,6 +333,7 @@ export async function getAllMissions(): Promise<Mission[]> {
 export async function addMission(mission: Omit<Mission, 'id' | 'createdAt'>): Promise<Mission> {
   const newMission = {
     id: uuidv4(),
+    user_id: getUserId(),
     title: mission.title,
     description: mission.description || null,
     type: mission.type,
@@ -226,7 +355,13 @@ export async function updateMission(id: string, updates: Partial<Mission>): Prom
   if (updates.progress !== undefined) patch.progress = updates.progress;
   if (updates.completedAt !== undefined) patch.completed_at = updates.completedAt;
 
-  const { data, error } = await supabase.from('missions').update(patch).eq('id', id).select().single();
+  const { data, error } = await supabase
+    .from('missions')
+    .update(patch)
+    .eq('id', id)
+    .eq('user_id', getUserId())
+    .select()
+    .single();
   if (error) throw error;
   return toMission(data as Record<string, unknown>);
 }
@@ -236,7 +371,11 @@ export async function updateMission(id: string, updates: Partial<Mission>): Prom
 // ============================================================
 
 export async function getAllChannels(): Promise<ChatChannel[]> {
-  const { data, error } = await supabase.from('chat_channels').select('*').order('created_at');
+  const { data, error } = await supabase
+    .from('chat_channels')
+    .select('*')
+    .eq('user_id', getUserId())
+    .order('created_at');
   if (error) throw error;
   return (data || []).map(toChannel);
 }
@@ -244,6 +383,7 @@ export async function getAllChannels(): Promise<ChatChannel[]> {
 export async function addChannel(channel: Omit<ChatChannel, 'id' | 'createdAt'>): Promise<ChatChannel> {
   const newChannel = {
     id: uuidv4(),
+    user_id: getUserId(),
     name: channel.name,
     icon: channel.icon || null,
     description: channel.description || null,
@@ -296,7 +436,11 @@ export async function addMessage(message: Omit<ChatMessage, 'id' | 'createdAt'>)
 // ============================================================
 
 export async function getAllRoutineBlocks(): Promise<RoutineBlock[]> {
-  const { data, error } = await supabase.from('routine_blocks').select('*').order('start_time');
+  const { data, error } = await supabase
+    .from('routine_blocks')
+    .select('*')
+    .eq('user_id', getUserId())
+    .order('start_time');
   if (error) throw error;
   return (data || []).map(toRoutineBlock);
 }
@@ -304,6 +448,7 @@ export async function getAllRoutineBlocks(): Promise<RoutineBlock[]> {
 export async function addRoutineBlock(block: Omit<RoutineBlock, 'id' | 'createdAt'>): Promise<RoutineBlock> {
   const newBlock = {
     id: uuidv4(),
+    user_id: getUserId(),
     title: block.title,
     start_time: block.startTime,
     end_time: block.endTime,
@@ -317,7 +462,11 @@ export async function addRoutineBlock(block: Omit<RoutineBlock, 'id' | 'createdA
 }
 
 export async function deleteRoutineBlock(id: string): Promise<void> {
-  const { error } = await supabase.from('routine_blocks').delete().eq('id', id);
+  const { error } = await supabase
+    .from('routine_blocks')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', getUserId());
   if (error) throw error;
 }
 
@@ -326,7 +475,11 @@ export async function deleteRoutineBlock(id: string): Promise<void> {
 // ============================================================
 
 export async function getAllAlarms(): Promise<Alarm[]> {
-  const { data, error } = await supabase.from('alarms').select('*').order('time');
+  const { data, error } = await supabase
+    .from('alarms')
+    .select('*')
+    .eq('user_id', getUserId())
+    .order('time');
   if (error) throw error;
   return (data || []).map(toAlarm);
 }
@@ -334,6 +487,7 @@ export async function getAllAlarms(): Promise<Alarm[]> {
 export async function addAlarm(alarm: Omit<Alarm, 'id' | 'createdAt'>): Promise<Alarm> {
   const newAlarm = {
     id: uuidv4(),
+    user_id: getUserId(),
     title: alarm.title,
     time: alarm.time,
     is_active: alarm.isActive,
@@ -351,12 +505,16 @@ export async function updateAlarm(id: string, updates: Partial<Alarm>): Promise<
   if (updates.isActive !== undefined) patch.is_active = updates.isActive;
   if (updates.title !== undefined) patch.title = updates.title;
   if (updates.time !== undefined) patch.time = updates.time;
-  const { error } = await supabase.from('alarms').update(patch).eq('id', id);
+  const { error } = await supabase.from('alarms').update(patch).eq('id', id).eq('user_id', getUserId());
   if (error) throw error;
 }
 
 export async function deleteAlarm(id: string): Promise<void> {
-  const { error } = await supabase.from('alarms').delete().eq('id', id);
+  const { error } = await supabase
+    .from('alarms')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', getUserId());
   if (error) throw error;
 }
 
@@ -365,7 +523,12 @@ export async function deleteAlarm(id: string): Promise<void> {
 // ============================================================
 
 export async function getDailyLog(date: string): Promise<DailyLog | undefined> {
-  const { data, error } = await supabase.from('daily_logs').select('*').eq('date', date).maybeSingle();
+  const { data, error } = await supabase
+    .from('daily_logs')
+    .select('*')
+    .eq('user_id', getUserId())
+    .eq('date', date)
+    .maybeSingle();
   if (error) throw error;
   return data ? toDailyLog(data as Record<string, unknown>) : undefined;
 }
@@ -380,12 +543,18 @@ export async function upsertDailyLog(date: string, updates: Partial<DailyLog>): 
     if (updates.xpEarned !== undefined) patch.xp_earned = updates.xpEarned;
     if (updates.notes !== undefined) patch.notes = updates.notes;
     if (updates.mood !== undefined) patch.mood = updates.mood;
-    const { data, error } = await supabase.from('daily_logs').update(patch).eq('id', existing.id).select().single();
+    const { data, error } = await supabase
+      .from('daily_logs')
+      .update(patch)
+      .eq('id', existing.id)
+      .select()
+      .single();
     if (error) throw error;
     return toDailyLog(data as Record<string, unknown>);
   }
   const newLog = {
     id: uuidv4(),
+    user_id: getUserId(),
     date,
     tasks_completed: updates.tasksCompleted || 0,
     missions_completed: updates.missionsCompleted || 0,
@@ -406,6 +575,7 @@ export async function upsertDailyLog(date: string, updates: Partial<DailyLog>): 
 export async function addPomodoroSession(session: Omit<PomodoroSession, 'id'>): Promise<PomodoroSession> {
   const newSession = {
     id: uuidv4(),
+    user_id: getUserId(),
     type: session.type,
     duration: session.duration,
     task_id: session.taskId || null,
@@ -422,6 +592,7 @@ export async function getTodayPomodoroSessions(): Promise<PomodoroSession[]> {
   const { data, error } = await supabase
     .from('pomodoro_sessions')
     .select('*')
+    .eq('user_id', getUserId())
     .gte('started_at', `${today}T00:00:00.000Z`)
     .lt('started_at', `${today}T23:59:59.999Z`);
   if (error) throw error;
@@ -435,7 +606,8 @@ export async function getTodayPomodoroSessions(): Promise<PomodoroSession[]> {
 export async function seedDefaultChannels(): Promise<void> {
   const { count } = await supabase
     .from('chat_channels')
-    .select('*', { count: 'exact', head: true });
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', getUserId());
 
   if ((count || 0) === 0) {
     await addChannel({

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type { UserProfile, UserLevel, UserAttributes } from '@/lib/types';
+import { updateUserLevel } from '@/lib/db/queries';
 
 // ============================================================
 // CÁLCULOS DE XP E NÍVEL
@@ -11,11 +12,15 @@ function xpForLevel(level: number): number {
 }
 
 interface UserState {
+  userId: string | null;
+  token: string | null;
   profile: UserProfile | null;
   level: UserLevel;
   hasCompletedOnboarding: boolean;
 
   // Actions
+  login: (userId: string, token: string, profile: UserProfile, levelData: UserLevel) => void;
+  logout: () => void;
   setProfile: (profile: UserProfile) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
   addXP: (amount: number, attribute?: keyof UserAttributes) => void;
@@ -39,10 +44,24 @@ const defaultLevel: UserLevel = {
 
 export const useUserStore = create<UserState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
+      userId: null,
+      token: null,
       profile: null,
       level: { ...defaultLevel },
       hasCompletedOnboarding: false,
+
+      login: (userId, token, profile, levelData) =>
+        set({ userId, token, profile, level: levelData, hasCompletedOnboarding: true }),
+
+      logout: () =>
+        set({
+          userId: null,
+          token: null,
+          profile: null,
+          level: { ...defaultLevel },
+          hasCompletedOnboarding: false,
+        }),
 
       setProfile: (profile) => set({ profile }),
 
@@ -57,27 +76,33 @@ export const useUserStore = create<UserState>()(
           xp += amount;
           totalXp += amount;
 
-          // Atualizar atributo específico
           if (attribute) {
             attributes = { ...attributes, [attribute]: attributes[attribute] + 1 };
           }
 
-          // Level up
           while (xp >= xpToNext) {
             xp -= xpToNext;
             level += 1;
             xpToNext = xpForLevel(level);
           }
 
-          return {
-            level: { level, xp, xpToNext, totalXp, attributes },
-          };
+          const newLevel = { level, xp, xpToNext, totalXp, attributes };
+
+          // Sincroniza com o banco em segundo plano
+          const { userId } = get();
+          if (userId) {
+            updateUserLevel(userId, newLevel).catch(() => {});
+          }
+
+          return { level: newLevel };
         }),
 
       completeOnboarding: () => set({ hasCompletedOnboarding: true }),
 
       reset: () =>
         set({
+          userId: null,
+          token: null,
           profile: null,
           level: { ...defaultLevel },
           hasCompletedOnboarding: false,

@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { getDB } from './idb';
+import { supabase } from './supabase';
 import type {
   Task,
   Mission,
@@ -12,49 +12,178 @@ import type {
 } from '@/lib/types';
 
 // ============================================================
+// HELPERS — mapear snake_case do Postgres → camelCase do app
+// ============================================================
+
+function toTask(r: Record<string, unknown>): Task {
+  return {
+    id: r.id as string,
+    title: r.title as string,
+    description: r.description as string | undefined,
+    category: r.category as Task['category'],
+    priority: r.priority as Task['priority'],
+    status: r.status as Task['status'],
+    xpReward: r.xp_reward as number,
+    createdAt: r.created_at as string,
+    completedAt: r.completed_at as string | undefined,
+    dueDate: r.due_date as string | undefined,
+    parentId: r.parent_id as string | undefined,
+    order: r.order as number,
+  };
+}
+
+function toMission(r: Record<string, unknown>): Mission {
+  return {
+    id: r.id as string,
+    title: r.title as string,
+    description: (r.description as string) || '',
+    type: r.type as Mission['type'],
+    status: r.status as Mission['status'],
+    date: r.date as string,
+    xpReward: r.xp_reward as number,
+    attributeBonus: {},
+    progress: r.progress as number | undefined,
+    target: r.target as number | undefined,
+    createdAt: r.created_at as string,
+    completedAt: r.completed_at as string | undefined,
+  };
+}
+
+function toChannel(r: Record<string, unknown>): ChatChannel {
+  return {
+    id: r.id as string,
+    name: r.name as string,
+    icon: (r.icon as string) || '💬',
+    description: (r.description as string) || '',
+    isSystem: (r.is_system as boolean) || false,
+    lastMessageAt: r.last_message_at as string | undefined,
+    createdAt: r.created_at as string,
+  };
+}
+
+function toMessage(r: Record<string, unknown>): ChatMessage {
+  return {
+    id: r.id as string,
+    channelId: r.channel_id as string,
+    role: r.role as ChatMessage['role'],
+    content: r.content as string,
+    actions: r.actions as ChatMessage['actions'],
+    createdAt: r.created_at as string,
+  };
+}
+
+function toRoutineBlock(r: Record<string, unknown>): RoutineBlock {
+  return {
+    id: r.id as string,
+    title: r.title as string,
+    startTime: r.start_time as string,
+    endTime: r.end_time as string,
+    category: r.category as RoutineBlock['category'],
+    isRecurring: (r.is_recurring as boolean) || false,
+    days: r.days as number[] | undefined,
+    createdAt: r.created_at as string,
+  };
+}
+
+function toAlarm(r: Record<string, unknown>): Alarm {
+  return {
+    id: r.id as string,
+    title: r.title as string,
+    time: r.time as string,
+    isActive: (r.is_active as boolean) ?? true,
+    isRecurring: (r.is_recurring as boolean) || false,
+    days: r.days as number[] | undefined,
+    type: (r.type as Alarm['type']) || 'reminder',
+    createdAt: r.created_at as string,
+  };
+}
+
+function toDailyLog(r: Record<string, unknown>): DailyLog {
+  return {
+    id: r.id as string,
+    date: r.date as string,
+    tasksCompleted: r.tasks_completed as number,
+    missionsCompleted: r.missions_completed as number,
+    pomodoroSessions: r.pomodoro_sessions as number,
+    xpEarned: r.xp_earned as number,
+    notes: r.notes as string | undefined,
+    mood: r.mood as number | undefined,
+    createdAt: r.created_at as string,
+  };
+}
+
+function toPomodoroSession(r: Record<string, unknown>): PomodoroSession {
+  return {
+    id: r.id as string,
+    type: r.type as PomodoroSession['type'],
+    duration: r.duration as number,
+    taskId: r.task_id as string | undefined,
+    startedAt: r.started_at as string,
+    completedAt: r.completed_at as string | undefined,
+  };
+}
+
+// ============================================================
 // TASKS
 // ============================================================
 
 export async function getAllTasks(): Promise<Task[]> {
-  const db = await getDB();
-  return db.getAll('tasks');
+  const { data, error } = await supabase.from('tasks').select('*').order('order');
+  if (error) throw error;
+  return (data || []).map(toTask);
 }
 
 export async function getTasksByStatus(status: Task['status']): Promise<Task[]> {
-  const db = await getDB();
-  return db.getAllFromIndex('tasks', 'by-status', status);
+  const { data, error } = await supabase.from('tasks').select('*').eq('status', status).order('order');
+  if (error) throw error;
+  return (data || []).map(toTask);
 }
 
 export async function getTasksByCategory(category: Task['category']): Promise<Task[]> {
-  const db = await getDB();
-  return db.getAllFromIndex('tasks', 'by-category', category);
+  const { data, error } = await supabase.from('tasks').select('*').eq('category', category).order('order');
+  if (error) throw error;
+  return (data || []).map(toTask);
 }
 
 export async function addTask(task: Omit<Task, 'id' | 'createdAt' | 'order'>): Promise<Task> {
-  const db = await getDB();
-  const allTasks = await db.getAll('tasks');
-  const newTask: Task = {
-    ...task,
+  const { count } = await supabase.from('tasks').select('*', { count: 'exact', head: true });
+  const newTask = {
     id: uuidv4(),
-    createdAt: new Date().toISOString(),
-    order: allTasks.length,
+    title: task.title,
+    description: task.description || null,
+    category: task.category,
+    priority: task.priority,
+    status: task.status,
+    xp_reward: task.xpReward,
+    due_date: task.dueDate || null,
+    parent_id: task.parentId || null,
+    order: count || 0,
   };
-  await db.put('tasks', newTask);
-  return newTask;
+  const { data, error } = await supabase.from('tasks').insert(newTask).select().single();
+  if (error) throw error;
+  return toTask(data as Record<string, unknown>);
 }
 
 export async function updateTask(id: string, updates: Partial<Task>): Promise<Task | undefined> {
-  const db = await getDB();
-  const task = await db.get('tasks', id);
-  if (!task) return undefined;
-  const updated = { ...task, ...updates };
-  await db.put('tasks', updated);
-  return updated;
+  const patch: Record<string, unknown> = {};
+  if (updates.title !== undefined) patch.title = updates.title;
+  if (updates.description !== undefined) patch.description = updates.description;
+  if (updates.category !== undefined) patch.category = updates.category;
+  if (updates.priority !== undefined) patch.priority = updates.priority;
+  if (updates.status !== undefined) patch.status = updates.status;
+  if (updates.xpReward !== undefined) patch.xp_reward = updates.xpReward;
+  if (updates.completedAt !== undefined) patch.completed_at = updates.completedAt;
+  if (updates.dueDate !== undefined) patch.due_date = updates.dueDate;
+  if (updates.order !== undefined) patch.order = updates.order;
+
+  const { data, error } = await supabase.from('tasks').update(patch).eq('id', id).select().single();
+  if (error) throw error;
+  return toTask(data as Record<string, unknown>);
 }
 
 export async function deleteTask(id: string): Promise<void> {
-  const db = await getDB();
-  await db.delete('tasks', id);
+  const { error } = await supabase.from('tasks').delete().eq('id', id);
+  if (error) throw error;
 }
 
 // ============================================================
@@ -62,33 +191,44 @@ export async function deleteTask(id: string): Promise<void> {
 // ============================================================
 
 export async function getMissionsByDate(date: string): Promise<Mission[]> {
-  const db = await getDB();
-  return db.getAllFromIndex('missions', 'by-date', date);
+  const { data, error } = await supabase.from('missions').select('*').eq('date', date);
+  if (error) throw error;
+  return (data || []).map(toMission);
 }
 
 export async function getAllMissions(): Promise<Mission[]> {
-  const db = await getDB();
-  return db.getAll('missions');
+  const { data, error } = await supabase.from('missions').select('*').order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(toMission);
 }
 
 export async function addMission(mission: Omit<Mission, 'id' | 'createdAt'>): Promise<Mission> {
-  const db = await getDB();
-  const newMission: Mission = {
-    ...mission,
+  const newMission = {
     id: uuidv4(),
-    createdAt: new Date().toISOString(),
+    title: mission.title,
+    description: mission.description || null,
+    type: mission.type,
+    status: mission.status,
+    date: mission.date,
+    xp_reward: mission.xpReward,
+    progress: mission.progress || 0,
+    target: mission.target || null,
   };
-  await db.put('missions', newMission);
-  return newMission;
+  const { data, error } = await supabase.from('missions').insert(newMission).select().single();
+  if (error) throw error;
+  return toMission(data as Record<string, unknown>);
 }
 
 export async function updateMission(id: string, updates: Partial<Mission>): Promise<Mission | undefined> {
-  const db = await getDB();
-  const mission = await db.get('missions', id);
-  if (!mission) return undefined;
-  const updated = { ...mission, ...updates };
-  await db.put('missions', updated);
-  return updated;
+  const patch: Record<string, unknown> = {};
+  if (updates.title !== undefined) patch.title = updates.title;
+  if (updates.status !== undefined) patch.status = updates.status;
+  if (updates.progress !== undefined) patch.progress = updates.progress;
+  if (updates.completedAt !== undefined) patch.completed_at = updates.completedAt;
+
+  const { data, error } = await supabase.from('missions').update(patch).eq('id', id).select().single();
+  if (error) throw error;
+  return toMission(data as Record<string, unknown>);
 }
 
 // ============================================================
@@ -96,26 +236,31 @@ export async function updateMission(id: string, updates: Partial<Mission>): Prom
 // ============================================================
 
 export async function getAllChannels(): Promise<ChatChannel[]> {
-  const db = await getDB();
-  return db.getAll('chat_channels');
+  const { data, error } = await supabase.from('chat_channels').select('*').order('created_at');
+  if (error) throw error;
+  return (data || []).map(toChannel);
 }
 
 export async function addChannel(channel: Omit<ChatChannel, 'id' | 'createdAt'>): Promise<ChatChannel> {
-  const db = await getDB();
-  const newChannel: ChatChannel = {
-    ...channel,
+  const newChannel = {
     id: uuidv4(),
-    createdAt: new Date().toISOString(),
+    name: channel.name,
+    icon: channel.icon || null,
+    description: channel.description || null,
+    is_system: channel.isSystem || false,
+    last_message_at: channel.lastMessageAt || null,
   };
-  await db.put('chat_channels', newChannel);
-  return newChannel;
+  const { data, error } = await supabase.from('chat_channels').insert(newChannel).select().single();
+  if (error) throw error;
+  return toChannel(data as Record<string, unknown>);
 }
 
 export async function updateChannel(id: string, updates: Partial<ChatChannel>): Promise<void> {
-  const db = await getDB();
-  const channel = await db.get('chat_channels', id);
-  if (!channel) return;
-  await db.put('chat_channels', { ...channel, ...updates });
+  const patch: Record<string, unknown> = {};
+  if (updates.lastMessageAt !== undefined) patch.last_message_at = updates.lastMessageAt;
+  if (updates.name !== undefined) patch.name = updates.name;
+  const { error } = await supabase.from('chat_channels').update(patch).eq('id', id);
+  if (error) throw error;
 }
 
 // ============================================================
@@ -123,21 +268,27 @@ export async function updateChannel(id: string, updates: Partial<ChatChannel>): 
 // ============================================================
 
 export async function getMessagesByChannel(channelId: string): Promise<ChatMessage[]> {
-  const db = await getDB();
-  return db.getAllFromIndex('chat_messages', 'by-channel', channelId);
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select('*')
+    .eq('channel_id', channelId)
+    .order('created_at');
+  if (error) throw error;
+  return (data || []).map(toMessage);
 }
 
 export async function addMessage(message: Omit<ChatMessage, 'id' | 'createdAt'>): Promise<ChatMessage> {
-  const db = await getDB();
-  const newMessage: ChatMessage = {
-    ...message,
+  const newMessage = {
     id: uuidv4(),
-    createdAt: new Date().toISOString(),
+    channel_id: message.channelId,
+    role: message.role,
+    content: message.content,
+    actions: message.actions || null,
   };
-  await db.put('chat_messages', newMessage);
-  // Atualizar lastMessageAt do canal
-  await updateChannel(message.channelId, { lastMessageAt: newMessage.createdAt });
-  return newMessage;
+  const { data, error } = await supabase.from('chat_messages').insert(newMessage).select().single();
+  if (error) throw error;
+  await updateChannel(message.channelId, { lastMessageAt: (data as Record<string, unknown>).created_at as string });
+  return toMessage(data as Record<string, unknown>);
 }
 
 // ============================================================
@@ -145,24 +296,29 @@ export async function addMessage(message: Omit<ChatMessage, 'id' | 'createdAt'>)
 // ============================================================
 
 export async function getAllRoutineBlocks(): Promise<RoutineBlock[]> {
-  const db = await getDB();
-  return db.getAll('routine_blocks');
+  const { data, error } = await supabase.from('routine_blocks').select('*').order('start_time');
+  if (error) throw error;
+  return (data || []).map(toRoutineBlock);
 }
 
 export async function addRoutineBlock(block: Omit<RoutineBlock, 'id' | 'createdAt'>): Promise<RoutineBlock> {
-  const db = await getDB();
-  const newBlock: RoutineBlock = {
-    ...block,
+  const newBlock = {
     id: uuidv4(),
-    createdAt: new Date().toISOString(),
+    title: block.title,
+    start_time: block.startTime,
+    end_time: block.endTime,
+    category: block.category,
+    is_recurring: block.isRecurring,
+    days: block.days || null,
   };
-  await db.put('routine_blocks', newBlock);
-  return newBlock;
+  const { data, error } = await supabase.from('routine_blocks').insert(newBlock).select().single();
+  if (error) throw error;
+  return toRoutineBlock(data as Record<string, unknown>);
 }
 
 export async function deleteRoutineBlock(id: string): Promise<void> {
-  const db = await getDB();
-  await db.delete('routine_blocks', id);
+  const { error } = await supabase.from('routine_blocks').delete().eq('id', id);
+  if (error) throw error;
 }
 
 // ============================================================
@@ -170,31 +326,38 @@ export async function deleteRoutineBlock(id: string): Promise<void> {
 // ============================================================
 
 export async function getAllAlarms(): Promise<Alarm[]> {
-  const db = await getDB();
-  return db.getAll('alarms');
+  const { data, error } = await supabase.from('alarms').select('*').order('time');
+  if (error) throw error;
+  return (data || []).map(toAlarm);
 }
 
 export async function addAlarm(alarm: Omit<Alarm, 'id' | 'createdAt'>): Promise<Alarm> {
-  const db = await getDB();
-  const newAlarm: Alarm = {
-    ...alarm,
+  const newAlarm = {
     id: uuidv4(),
-    createdAt: new Date().toISOString(),
+    title: alarm.title,
+    time: alarm.time,
+    is_active: alarm.isActive,
+    is_recurring: alarm.isRecurring,
+    days: alarm.days || null,
+    type: alarm.type,
   };
-  await db.put('alarms', newAlarm);
-  return newAlarm;
+  const { data, error } = await supabase.from('alarms').insert(newAlarm).select().single();
+  if (error) throw error;
+  return toAlarm(data as Record<string, unknown>);
 }
 
 export async function updateAlarm(id: string, updates: Partial<Alarm>): Promise<void> {
-  const db = await getDB();
-  const alarm = await db.get('alarms', id);
-  if (!alarm) return;
-  await db.put('alarms', { ...alarm, ...updates });
+  const patch: Record<string, unknown> = {};
+  if (updates.isActive !== undefined) patch.is_active = updates.isActive;
+  if (updates.title !== undefined) patch.title = updates.title;
+  if (updates.time !== undefined) patch.time = updates.time;
+  const { error } = await supabase.from('alarms').update(patch).eq('id', id);
+  if (error) throw error;
 }
 
 export async function deleteAlarm(id: string): Promise<void> {
-  const db = await getDB();
-  await db.delete('alarms', id);
+  const { error } = await supabase.from('alarms').delete().eq('id', id);
+  if (error) throw error;
 }
 
 // ============================================================
@@ -202,31 +365,38 @@ export async function deleteAlarm(id: string): Promise<void> {
 // ============================================================
 
 export async function getDailyLog(date: string): Promise<DailyLog | undefined> {
-  const db = await getDB();
-  const logs = await db.getAllFromIndex('daily_logs', 'by-date', date);
-  return logs[0];
+  const { data, error } = await supabase.from('daily_logs').select('*').eq('date', date).maybeSingle();
+  if (error) throw error;
+  return data ? toDailyLog(data as Record<string, unknown>) : undefined;
 }
 
 export async function upsertDailyLog(date: string, updates: Partial<DailyLog>): Promise<DailyLog> {
-  const db = await getDB();
   const existing = await getDailyLog(date);
   if (existing) {
-    const updated = { ...existing, ...updates };
-    await db.put('daily_logs', updated);
-    return updated;
+    const patch: Record<string, unknown> = {};
+    if (updates.tasksCompleted !== undefined) patch.tasks_completed = updates.tasksCompleted;
+    if (updates.missionsCompleted !== undefined) patch.missions_completed = updates.missionsCompleted;
+    if (updates.pomodoroSessions !== undefined) patch.pomodoro_sessions = updates.pomodoroSessions;
+    if (updates.xpEarned !== undefined) patch.xp_earned = updates.xpEarned;
+    if (updates.notes !== undefined) patch.notes = updates.notes;
+    if (updates.mood !== undefined) patch.mood = updates.mood;
+    const { data, error } = await supabase.from('daily_logs').update(patch).eq('id', existing.id).select().single();
+    if (error) throw error;
+    return toDailyLog(data as Record<string, unknown>);
   }
-  const newLog: DailyLog = {
+  const newLog = {
     id: uuidv4(),
     date,
-    tasksCompleted: 0,
-    missionsCompleted: 0,
-    pomodoroSessions: 0,
-    xpEarned: 0,
-    createdAt: new Date().toISOString(),
-    ...updates,
+    tasks_completed: updates.tasksCompleted || 0,
+    missions_completed: updates.missionsCompleted || 0,
+    pomodoro_sessions: updates.pomodoroSessions || 0,
+    xp_earned: updates.xpEarned || 0,
+    notes: updates.notes || null,
+    mood: updates.mood || null,
   };
-  await db.put('daily_logs', newLog);
-  return newLog;
+  const { data, error } = await supabase.from('daily_logs').insert(newLog).select().single();
+  if (error) throw error;
+  return toDailyLog(data as Record<string, unknown>);
 }
 
 // ============================================================
@@ -234,20 +404,28 @@ export async function upsertDailyLog(date: string, updates: Partial<DailyLog>): 
 // ============================================================
 
 export async function addPomodoroSession(session: Omit<PomodoroSession, 'id'>): Promise<PomodoroSession> {
-  const db = await getDB();
-  const newSession: PomodoroSession = {
-    ...session,
+  const newSession = {
     id: uuidv4(),
+    type: session.type,
+    duration: session.duration,
+    task_id: session.taskId || null,
+    started_at: session.startedAt,
+    completed_at: session.completedAt || null,
   };
-  await db.put('pomodoro_sessions', newSession);
-  return newSession;
+  const { data, error } = await supabase.from('pomodoro_sessions').insert(newSession).select().single();
+  if (error) throw error;
+  return toPomodoroSession(data as Record<string, unknown>);
 }
 
 export async function getTodayPomodoroSessions(): Promise<PomodoroSession[]> {
-  const db = await getDB();
-  const all = await db.getAll('pomodoro_sessions');
   const today = new Date().toISOString().split('T')[0];
-  return all.filter(s => s.startedAt.startsWith(today));
+  const { data, error } = await supabase
+    .from('pomodoro_sessions')
+    .select('*')
+    .gte('started_at', `${today}T00:00:00.000Z`)
+    .lt('started_at', `${today}T23:59:59.999Z`);
+  if (error) throw error;
+  return (data || []).map(toPomodoroSession);
 }
 
 // ============================================================
@@ -255,9 +433,11 @@ export async function getTodayPomodoroSessions(): Promise<PomodoroSession[]> {
 // ============================================================
 
 export async function seedDefaultChannels(): Promise<void> {
-  const db = await getDB();
-  const channels = await db.getAll('chat_channels');
-  if (channels.length === 0) {
+  const { count } = await supabase
+    .from('chat_channels')
+    .select('*', { count: 'exact', head: true });
+
+  if ((count || 0) === 0) {
     await addChannel({
       name: 'Sistema',
       icon: '🤖',

@@ -48,10 +48,23 @@ export async function streamChat(
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(
-        (errorData as { error?: { message?: string } })?.error?.message || `Erro ${response.status}: ${response.statusText}`
-      );
+      const errorData = await response.json().catch(() => ({})) as { error?: { message?: string; code?: number } };
+      const apiMsg = errorData?.error?.message || '';
+      
+      // Traduzir erros comuns do OpenRouter
+      if (response.status === 401 || apiMsg.toLowerCase().includes('user not found')) {
+        throw new Error('Chave de API inválida. Verifique sua chave em Configurações ou gere uma nova em openrouter.ai');
+      }
+      if (response.status === 402) {
+        throw new Error('Saldo insuficiente no OpenRouter. Adicione créditos em openrouter.ai');
+      }
+      if (response.status === 429) {
+        throw new Error('Muitas requisições. Aguarde um momento e tente novamente.');
+      }
+      if (apiMsg.toLowerCase().includes('model') && apiMsg.toLowerCase().includes('not found')) {
+        throw new Error(`Modelo "${model}" não encontrado no OpenRouter. Verifique o nome do modelo em Configurações.`);
+      }
+      throw new Error(apiMsg || `Erro ${response.status}: ${response.statusText}`);
     }
 
     const reader = response.body?.getReader();

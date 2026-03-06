@@ -63,11 +63,6 @@ export default function OnboardingPage() {
     if (hour >= 12 && hour < 18) queueOrPlayVoice('/audios/boa_tarde.mp3');
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Play API key audio when reaching step 4
-  useEffect(() => {
-    if (step === 4) playVoiceApiKey();
-  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const toggleItem = (list: string[], item: string, setter: (v: string[]) => void) => {
     setter(list.includes(item) ? list.filter((i) => i !== item) : [...list, item]);
   };
@@ -107,6 +102,8 @@ export default function OnboardingPage() {
       playVoiceBemVindo();
       // Go to API key step instead of dashboard
       setStep(4);
+      // Play api_key.mp3 after bem-vindo finishes (gesture already registered)
+      setTimeout(() => playVoiceApiKey(), 2000);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       if (msg.includes('duplicate') || msg.includes('unique')) {

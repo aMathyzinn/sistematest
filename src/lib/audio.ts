@@ -111,27 +111,22 @@ export async function playVoiceFile(src: string): Promise<void> {
     source.buffer = buffer;
 
     const dryGain = ctx.createGain();
-    dryGain.gain.value = 0.9;
+    dryGain.gain.value = 0.92;
 
-    const delay1 = ctx.createDelay(2);
-    delay1.delayTime.value = 0.28;
+    // Eco leve — apenas 2 reflexos bem discretos
+    const delay1 = ctx.createDelay(1);
+    delay1.delayTime.value = 0.18;
     const echoGain1 = ctx.createGain();
-    echoGain1.gain.value = 0.10;
+    echoGain1.gain.value = 0.04;
 
-    const delay2 = ctx.createDelay(2);
-    delay2.delayTime.value = 0.56;
+    const delay2 = ctx.createDelay(1);
+    delay2.delayTime.value = 0.36;
     const echoGain2 = ctx.createGain();
-    echoGain2.gain.value = 0.04;
+    echoGain2.gain.value = 0.012;
 
-    const delay3 = ctx.createDelay(2);
-    delay3.delayTime.value = 0.84;
-    const echoGain3 = ctx.createGain();
-    echoGain3.gain.value = 0.015;
-
-    source.connect(dryGain);    dryGain.connect(ctx.destination);
-    source.connect(delay1);     delay1.connect(echoGain1);  echoGain1.connect(ctx.destination);
-    source.connect(delay2);     delay2.connect(echoGain2);  echoGain2.connect(ctx.destination);
-    source.connect(delay3);     delay3.connect(echoGain3);  echoGain3.connect(ctx.destination);
+    source.connect(dryGain);  dryGain.connect(ctx.destination);
+    source.connect(delay1);   delay1.connect(echoGain1);  echoGain1.connect(ctx.destination);
+    source.connect(delay2);   delay2.connect(echoGain2);  echoGain2.connect(ctx.destination);
     // Also feed into the analyser so visualisers can read it
     if (_analyser) source.connect(_analyser);
 

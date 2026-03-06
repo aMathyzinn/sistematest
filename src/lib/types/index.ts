@@ -222,17 +222,23 @@ export interface Project {
 export type AIAction =
   | { type: 'CREATE_TASK'; payload: Partial<Task> & { title: string } }
   | { type: 'COMPLETE_TASK'; payload: { taskId: string } }
+  | { type: 'DELETE_TASK'; payload: { taskId: string } }
+  | { type: 'UPDATE_TASK'; payload: { taskId: string; title?: string; description?: string; priority?: Task['priority']; category?: Task['category']; dueDate?: string } }
   | { type: 'CREATE_MISSION'; payload: Partial<Mission> & { title: string; type: MissionType } }
+  | { type: 'UPDATE_MISSION'; payload: { missionId: string; status?: Mission['status']; progress?: number; steps?: Mission['steps'] } }
   | { type: 'AWARD_XP'; payload: { amount: number; attribute?: keyof UserAttributes } }
   | { type: 'UPDATE_LAYOUT'; payload: { sections: Partial<UISection>[] } }
   | { type: 'CREATE_CHAT_CHANNEL'; payload: { name: string; icon: string; description: string } }
   | { type: 'ADD_ROUTINE_BLOCK'; payload: Partial<RoutineBlock> & { title: string; startTime: string; endTime: string } }
+  | { type: 'DELETE_ROUTINE_BLOCK'; payload: { blockId: string } }
   | { type: 'SET_ALARM'; payload: Partial<Alarm> & { title: string; time: string } }
   | { type: 'UPDATE_PROFILE'; payload: Partial<UserProfile> }
   | { type: 'CREATE_EXERCISE_LOG'; payload: { name: string; muscleGroup: MuscleGroup; sets: ExerciseSet[]; notes?: string; date?: string } }
   | { type: 'CREATE_PROJECT'; payload: { title: string; description?: string; deadline?: string; tasks?: string[] } }
   | { type: 'UPDATE_PROJECT'; payload: { projectId: string; status?: ProjectStatus; progress?: number; title?: string } }
-  | { type: 'ADD_PROJECT_TASK'; payload: { projectId: string; title: string } };
+  | { type: 'DELETE_PROJECT'; payload: { projectId: string } }
+  | { type: 'ADD_PROJECT_TASK'; payload: { projectId: string; title: string } }
+  | { type: 'COMPLETE_PROJECT_TASK'; payload: { projectId: string; taskId: string } };
 
 // ---- Resposta da IA ----
 export interface AIResponse {

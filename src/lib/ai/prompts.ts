@@ -34,11 +34,11 @@ NÍVEL ATUAL:
 `;
 
   const tasksBlock = pendingTasks.length > 0
-    ? `TAREFAS PENDENTES:\n${pendingTasks.map(t => `- [${t.priority}] ${t.title} (${t.category})`).join('\n')}`
+    ? `TAREFAS PENDENTES:\n${pendingTasks.map(t => `- [id:${t.id}] [${t.priority}] ${t.title} (${t.category})`).join('\n')}`
     : 'TAREFAS PENDENTES: Nenhuma tarefa no momento.';
 
   const missionsBlock = todayMissions.length > 0
-    ? `MISSÕES DE HOJE:\n${todayMissions.map(m => `- [${m.status}] ${m.title} (${m.type}) ${m.target ? `${m.progress || 0}/${m.target}` : ''}`).join('\n')}`
+    ? `MISSÕES DE HOJE:\n${todayMissions.map(m => `- [id:${m.id}] [${m.status}] ${m.title} (${m.type}) ${m.target ? `${m.progress || 0}/${m.target}` : ''}`).join('\n')}`
     : 'MISSÕES DE HOJE: Nenhuma missão definida.';
 
   const layoutBlock = `LAYOUT ATUAL:\n${currentLayout.filter(s => s.visible).map(s => `- ${s.title} (${s.type})`).join('\n')}`;
@@ -48,7 +48,7 @@ NÍVEL ATUAL:
     : 'TREINOS: Nenhum treino registrado ainda.';
 
   const projectsBlock = activeProjects && activeProjects.length > 0
-    ? `PROJETOS ATIVOS:\n${activeProjects.map(p => `- [${p.status}] ${p.title} (${p.progress}%) — ${p.tasks.filter(t => t.done).length}/${p.tasks.length} tarefas`).join('\n')}`
+    ? `PROJETOS ATIVOS:\n${activeProjects.map(p => `- [id:${p.id}] [${p.status}] ${p.title} (${p.progress}%) — ${p.tasks.filter(t => t.done).length}/${p.tasks.length} tarefas\n${p.tasks.map(t => `  • [tid:${t.id}] [${t.done ? 'done' : 'pending'}] ${t.title}`).join('\n')}`).join('\n')}`
     : 'PROJETOS ATIVOS: Nenhum projeto.';
 
   return `Você é o SISTEMA DE EVOLUÇÃO PESSOAL, inspirado em Solo Leveling.
@@ -118,6 +118,24 @@ Cada action é um objeto com "type" e "payload".
 
 13. ADD_PROJECT_TASK - adicionar uma tarefa a um projeto existente (use UPDATE_PROJECT com tasks array atualizado se necessário)
     { "type": "ADD_PROJECT_TASK", "payload": { "projectId": "string", "title": "string" } }
+
+14. DELETE_TASK - deletar uma tarefa existente (use o id da lista de tarefas acima)
+    { "type": "DELETE_TASK", "payload": { "taskId": "string" } }
+
+15. UPDATE_TASK - atualizar título, prioridade ou categoria de uma tarefa existente
+    { "type": "UPDATE_TASK", "payload": { "taskId": "string", "title": "string_opcional", "priority": "low|medium|high|urgent_opcional", "category": "string_opcional", "description": "string_opcional" } }
+
+16. UPDATE_MISSION - atualizar status ou progresso de uma missão (use o id da lista de missões acima)
+    { "type": "UPDATE_MISSION", "payload": { "missionId": "string", "status": "pending|active|completed|failed_opcional", "progress": number_opcional, "steps": [...steps atualizados_opcional] } }
+
+17. DELETE_PROJECT - deletar um projeto (use o id da lista de projetos acima)
+    { "type": "DELETE_PROJECT", "payload": { "projectId": "string" } }
+
+18. COMPLETE_PROJECT_TASK - marcar uma subtarefa de um projeto como concluída (use tid da lista de tarefas do projeto)
+    { "type": "COMPLETE_PROJECT_TASK", "payload": { "projectId": "string", "taskId": "string" } }
+
+19. DELETE_ROUTINE_BLOCK - remover um bloco de rotina
+    { "type": "DELETE_ROUTINE_BLOCK", "payload": { "blockId": "string" } }
 
 IMPORTANTE:
 - Sempre inclua o campo "actions" mesmo que seja array vazio []

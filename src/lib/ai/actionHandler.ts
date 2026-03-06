@@ -230,6 +230,58 @@ async function executeAction(action: AIAction): Promise<string> {
       return `✅ Tarefa adicionada ao projeto: ${action.payload.title}`;
     }
 
+    case 'DELETE_TASK': {
+      await db.deleteTask(action.payload.taskId);
+      return `🗑️ Tarefa removida`;
+    }
+
+    case 'UPDATE_TASK': {
+      const updates: Record<string, unknown> = {};
+      if (action.payload.title) updates.title = action.payload.title;
+      if (action.payload.description !== undefined) updates.description = action.payload.description;
+      if (action.payload.priority) updates.priority = action.payload.priority;
+      if (action.payload.category) updates.category = action.payload.category;
+      if (action.payload.dueDate !== undefined) updates.dueDate = action.payload.dueDate;
+      const updated = await db.updateTask(action.payload.taskId, updates as Partial<import('@/lib/types').Task>);
+      return `✏️ Tarefa atualizada: ${updated?.title || action.payload.taskId}`;
+    }
+
+    case 'UPDATE_MISSION': {
+      const missionUpdates: Record<string, unknown> = {};
+      if (action.payload.status) missionUpdates.status = action.payload.status;
+      if (action.payload.progress !== undefined) missionUpdates.progress = action.payload.progress;
+      if (action.payload.steps) missionUpdates.steps = action.payload.steps;
+      const mission = await db.updateMission(action.payload.missionId, missionUpdates as Partial<import('@/lib/types').Mission>);
+      if (mission?.status === 'completed') {
+        useUserStore.getState().addXP(mission.xpReward, 'consistency');
+      }
+      return `⚔️ Missão atualizada: ${mission?.title}`;
+    }
+
+    case 'DELETE_PROJECT': {
+      await db.deleteProject(action.payload.projectId);
+      return `🗑️ Projeto removido`;
+    }
+
+    case 'COMPLETE_PROJECT_TASK': {
+      const allProjects = await db.getAllProjects();
+      const proj = allProjects.find((p) => p.id === action.payload.projectId);
+      if (!proj) return `⚠️ Projeto não encontrado`;
+      const updatedTasks = proj.tasks.map((t) =>
+        t.id === action.payload.taskId ? { ...t, done: true } : t
+      );
+      const progress = Math.round((updatedTasks.filter((t) => t.done).length / updatedTasks.length) * 100);
+      await db.updateProject(proj.id, { tasks: updatedTasks, progress });
+      useUserStore.getState().addXP(10, 'focus');
+      if (progress === 100) useUserStore.getState().addXP(50, 'discipline');
+      return `✅ Subtarefa concluída (${proj.title} — ${progress}%)`;
+    }
+
+    case 'DELETE_ROUTINE_BLOCK': {
+      await db.deleteRoutineBlock(action.payload.blockId);
+      return `🗑️ Bloco de rotina removido`;
+    }
+
     default:
       return `⚠️ Ação desconhecida`;
   }

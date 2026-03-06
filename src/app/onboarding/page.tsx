@@ -297,12 +297,8 @@ export default function OnboardingPage() {
       initial={{ opacity: 0, x: 50 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -50 }}
-      className="relative space-y-6 overflow-hidden rounded-2xl"
+      className="space-y-6"
     >
-      {/* Spectrum visualiser background */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 opacity-40">
-        <AudioSpectrum color="#86efac" mirror />
-      </div>
       <div className="text-center space-y-2">
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-accent-green/20 border border-accent-green/30">
           <Key size={28} className="text-accent-green" />
@@ -369,7 +365,13 @@ export default function OnboardingPage() {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-bg-primary px-4">
-      <div className="w-full max-w-md space-y-8">
+      {/* Full-page spectrum wallpaper — visible only on API key step */}
+      {step === 4 && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-0 h-48 z-0 opacity-30">
+          <AudioSpectrum color="#86efac" mirror />
+        </div>
+      )}
+      <div className="relative z-10 w-full max-w-md space-y-8">
         {/* Header */}
         <div className="text-center">
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-purple/20 border border-accent-purple/30">

@@ -1,12 +1,6 @@
-const CACHE_NAME = 'sistema-v1';
+const CACHE_NAME = 'sistema-v2';
 const STATIC_ASSETS = [
   '/',
-  '/dashboard/',
-  '/chat/',
-  '/tasks/',
-  '/missions/',
-  '/pomodoro/',
-  '/routine/',
   '/manifest.json',
 ];
 

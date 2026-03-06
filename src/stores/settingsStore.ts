@@ -27,7 +27,7 @@ export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
       apiKey: process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '',
-      aiModel: 'openai/gpt-5-mini',
+      aiModel: 'openai/gpt-4o-mini',
       pomodoro: {
         focusDuration: 25,
         breakDuration: 5,

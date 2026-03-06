@@ -91,7 +91,7 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
 
     const systemPrompt = buildSystemPrompt({ profile, level, pendingTasks, todayMissions, currentLayout: sections, recentExercises, activeProjects });
     const currentMessages = get().messagesByChannel[channelId] || [];
-    const apiMessages = formatMessagesForAPI(systemPrompt, currentMessages.slice(-20));
+    const apiMessages = formatMessagesForAPI(systemPrompt, currentMessages.slice(-8));
 
     const abort = new AbortController();
     set({ isLoading: true, isStreaming: true, streamingText: '', streamingChannelId: channelId, _abort: abort });

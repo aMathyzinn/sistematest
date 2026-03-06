@@ -41,8 +41,8 @@ export async function streamChat(
         model,
         stream: true,
         messages,
-        temperature: 0.7,
-        max_tokens: 2048,
+        temperature: 0.4,
+        max_tokens: 500,
       }),
       signal,
     });

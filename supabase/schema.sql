@@ -189,6 +189,14 @@ create table if not exists projects (
 alter table projects disable row level security;
 create index if not exists projects_user_id_idx on projects(user_id);
 
+-- ============================================================
+-- MIGRAÇÃO: colunas settings e ui_settings na tabela users
+-- Execute no SQL Editor do Supabase se a tabela já existe
+-- ============================================================
+alter table users
+  add column if not exists settings jsonb not null default '{"aiModel":"openai/gpt-4o-mini","pomodoro":{"focusDuration":25,"breakDuration":5,"longBreakDuration":15,"sessionsUntilLongBreak":4},"soundEnabled":true,"notificationsEnabled":false,"language":"pt-BR"}',
+  add column if not exists ui_settings jsonb not null default '{"theme":"dark","sections":[{"id":"xp-summary","title":"Nível & XP","type":"xp_summary","order":0,"visible":true},{"id":"missions-today","title":"Missões de Hoje","type":"missions_today","order":1,"visible":true},{"id":"tasks-preview","title":"Tarefas","type":"tasks_preview","order":2,"visible":true},{"id":"pomodoro-widget","title":"Pomodoro","type":"pomodoro_widget","order":3,"visible":true},{"id":"routine-today","title":"Rotina","type":"routine_today","order":4,"visible":true}]}';
+
 -- Tasks
 create table if not exists tasks (
   id text primary key,

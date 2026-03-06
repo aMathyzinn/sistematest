@@ -17,32 +17,93 @@ import type {
   Project,
   ProjectTask,
   ProjectStatus,
+  UISection,
+  PomodoroSettings,
 } from '@/lib/types';
 
 // ============================================================
-// SESSÃO ATUAL — definido no login, reutilizado por todas as queries
+// SESSÃO ATUAL — gerenciada via cookie (funciona em PWA/mobile)
 // ============================================================
 
-// Eagerly restore userId from the persisted Zustand store on module load.
-// This runs synchronously before any React component mounts, so DB calls in
-// useEffect hooks (children fire before parent effects) work immediately after
-// a page refresh without waiting for SessionProvider to re-set the value.
+export interface UserSettings {
+  aiModel: string;
+  pomodoro: PomodoroSettings;
+  soundEnabled: boolean;
+  notificationsEnabled: boolean;
+  language: string;
+}
+
+export interface UserUISettings {
+  theme: 'dark' | 'light';
+  sections: UISection[];
+}
+
+export const DEFAULT_SETTINGS: UserSettings = {
+  aiModel: 'openai/gpt-4o-mini',
+  pomodoro: { focusDuration: 25, breakDuration: 5, longBreakDuration: 15, sessionsUntilLongBreak: 4 },
+  soundEnabled: true,
+  notificationsEnabled: false,
+  language: 'pt-BR',
+};
+
+export const DEFAULT_UI_SETTINGS: UserUISettings = {
+  theme: 'dark',
+  sections: [
+    { id: 'xp-summary', title: 'Nível & XP', type: 'xp_summary', order: 0, visible: true },
+    { id: 'missions-today', title: 'Missões de Hoje', type: 'missions_today', order: 1, visible: true },
+    { id: 'tasks-preview', title: 'Tarefas', type: 'tasks_preview', order: 2, visible: true },
+    { id: 'pomodoro-widget', title: 'Pomodoro', type: 'pomodoro_widget', order: 3, visible: true },
+    { id: 'routine-today', title: 'Rotina', type: 'routine_today', order: 4, visible: true },
+  ],
+};
+
+function readCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]*)'));
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+// Restore userId from cookie synchronously — runs before any React component
+// mounts, so DB queries in useEffect hooks work even on mobile PWA reload.
 let _currentUserId: string | null = null;
 if (typeof window !== 'undefined') {
   try {
-    const raw = localStorage.getItem('sistema-user');
+    const raw = readCookie('sistema_session');
     if (raw) {
-      const parsed = JSON.parse(raw) as { state?: { userId?: string } };
-      if (parsed?.state?.userId) {
-        _currentUserId = parsed.state.userId;
-      }
+      const data = JSON.parse(raw) as { userId?: string };
+      if (data?.userId) _currentUserId = data.userId;
     }
   } catch {
-    // localStorage not available or parse error — _currentUserId stays null
+    // cookie not available or parse error — _currentUserId stays null
   }
 }
 
-export function setCurrentUserId(id: string | null) {
+/** Sets the active user and writes the session to a cookie (survives PWA reloads). */
+export function setSession(userId: string | null, token: string | null): void {
+  _currentUserId = userId;
+  if (typeof document === 'undefined') return;
+  if (userId && token) {
+    document.cookie = `sistema_session=${encodeURIComponent(JSON.stringify({ userId, token }))}; max-age=31536000; path=/; SameSite=Strict`;
+  } else {
+    document.cookie = 'sistema_session=; max-age=0; path=/; SameSite=Strict';
+  }
+}
+
+/** Reads the stored session from the cookie. */
+export function getSessionCookie(): { userId: string; token: string } | null {
+  try {
+    const raw = readCookie('sistema_session');
+    if (!raw) return null;
+    const data = JSON.parse(raw) as { userId?: string; token?: string };
+    if (data?.userId && data?.token) return { userId: data.userId, token: data.token };
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** @deprecated Use setSession() instead. */
+export function setCurrentUserId(id: string | null): void {
   _currentUserId = id;
 }
 
@@ -175,9 +236,13 @@ export interface UserAccount {
   apiKey: string;
   profile: UserProfile;
   levelData: UserLevel;
+  settings: UserSettings;
+  uiSettings: UserUISettings;
 }
 
 function toUserAccount(r: Record<string, unknown>): UserAccount {
+  const settingsRaw = (r.settings as Partial<UserSettings>) || {};
+  const uiSettingsRaw = (r.ui_settings as Partial<UserUISettings>) || {};
   return {
     id: r.id as string,
     token: r.token as string,
@@ -191,6 +256,12 @@ function toUserAccount(r: Record<string, unknown>): UserAccount {
       createdAt: r.created_at as string,
     },
     levelData: r.level_data as UserLevel,
+    settings: {
+      ...DEFAULT_SETTINGS,
+      ...settingsRaw,
+      pomodoro: { ...DEFAULT_SETTINGS.pomodoro, ...(settingsRaw.pomodoro || {}) },
+    },
+    uiSettings: { ...DEFAULT_UI_SETTINGS, ...uiSettingsRaw },
   };
 }
 
@@ -229,6 +300,8 @@ export async function createUser(
       interests: [],
       level_data: defaultLevel,
       api_key: '',
+      settings: DEFAULT_SETTINGS,
+      ui_settings: DEFAULT_UI_SETTINGS,
     })
     .select()
     .single();
@@ -256,6 +329,20 @@ export async function updateUserToken(userId: string, newToken: string): Promise
     .update({ token: newToken.trim(), updated_at: new Date().toISOString() })
     .eq('id', userId);
   if (error) throw error;
+}
+
+export async function upsertUserSettings(settings: UserSettings): Promise<void> {
+  await supabase
+    .from('users')
+    .update({ settings, updated_at: new Date().toISOString() })
+    .eq('id', getUserId());
+}
+
+export async function upsertUserUISettings(uiSettings: UserUISettings): Promise<void> {
+  await supabase
+    .from('users')
+    .update({ ui_settings: uiSettings, updated_at: new Date().toISOString() })
+    .eq('id', getUserId());
 }
 
 // ============================================================

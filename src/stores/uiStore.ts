@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import type { UISection, AppView } from '@/lib/types';
+import { upsertUserUISettings, type UserUISettings } from '@/lib/db/queries';
 
 // ============================================================
 // STORE DE UI DINÂMICA
@@ -13,6 +13,7 @@ interface UIState {
   sidebarOpen: boolean;
 
   // Actions
+  init: (uiSettings: UserUISettings) => void;
   setView: (view: AppView) => void;
   setSections: (sections: UISection[]) => void;
   addSection: (section: UISection) => void;
@@ -23,6 +24,10 @@ interface UIState {
   toggleSidebar: () => void;
 }
 
+function syncUI(theme: 'dark' | 'light', sections: UISection[]) {
+  upsertUserUISettings({ theme, sections }).catch(() => {});
+}
+
 const defaultSections: UISection[] = [
   { id: 'xp-summary', title: 'Nível & XP', type: 'xp_summary', order: 0, visible: true },
   { id: 'missions-today', title: 'Missões de Hoje', type: 'missions_today', order: 1, visible: true },
@@ -31,55 +36,52 @@ const defaultSections: UISection[] = [
   { id: 'routine-today', title: 'Rotina', type: 'routine_today', order: 4, visible: true },
 ];
 
-export const useUIStore = create<UIState>()(
-  persist(
-    (set) => ({
-      currentView: 'dashboard',
-      sections: [...defaultSections],
-      theme: 'dark',
-      sidebarOpen: false,
+export const useUIStore = create<UIState>()((set, get) => ({
+  currentView: 'dashboard',
+  sections: [...defaultSections],
+  theme: 'dark',
+  sidebarOpen: false,
 
-      setView: (view) => set({ currentView: view }),
+  init: (uiSettings) => set({
+    theme: uiSettings.theme,
+    sections: uiSettings.sections.length > 0 ? uiSettings.sections : [...defaultSections],
+  }),
 
-      setSections: (sections) => set({ sections }),
+  setView: (view) => set({ currentView: view }),
 
-      addSection: (section) =>
-        set((state) => ({
-          sections: [...state.sections, section],
-        })),
+  setSections: (sections) => {
+    set({ sections });
+    syncUI(get().theme, sections);
+  },
 
-      removeSection: (id) =>
-        set((state) => ({
-          sections: state.sections.filter((s) => s.id !== id),
-        })),
+  addSection: (section) => {
+    const sections = [...get().sections, section];
+    set({ sections });
+    syncUI(get().theme, sections);
+  },
 
-      updateSection: (id, updates) =>
-        set((state) => ({
-          sections: state.sections.map((s) =>
-            s.id === id ? { ...s, ...updates } : s
-          ),
-        })),
+  removeSection: (id) => {
+    const sections = get().sections.filter((s) => s.id !== id);
+    set({ sections });
+    syncUI(get().theme, sections);
+  },
 
-      reorderSections: (sections) => set({ sections }),
+  updateSection: (id, updates) => {
+    const sections = get().sections.map((s) => s.id === id ? { ...s, ...updates } : s);
+    set({ sections });
+    syncUI(get().theme, sections);
+  },
 
-      toggleTheme: () =>
-        set((state) => ({
-          theme: state.theme === 'dark' ? 'light' : 'dark',
-        })),
+  reorderSections: (sections) => {
+    set({ sections });
+    syncUI(get().theme, sections);
+  },
 
-      toggleSidebar: () =>
-        set((state) => ({ sidebarOpen: !state.sidebarOpen })),
-    }),
-    {
-      name: 'sistema-ui',
-      storage: createJSONStorage(() => {
-        if (typeof window !== 'undefined') return localStorage;
-        return {
-          getItem: () => null,
-          setItem: () => {},
-          removeItem: () => {},
-        };
-      }),
-    }
-  )
-);
+  toggleTheme: () => {
+    const theme = get().theme === 'dark' ? 'light' : 'dark';
+    set({ theme });
+    syncUI(theme, get().sections);
+  },
+
+  toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
+}));

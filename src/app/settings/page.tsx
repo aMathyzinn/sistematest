@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useUserStore } from '@/stores/userStore';
-import { updateUserApiKey, updateUserToken, getUserByToken, setCurrentUserId } from '@/lib/db/queries';
+import { updateUserApiKey, updateUserToken, getUserByToken } from '@/lib/db/queries';
 import AppShell from '@/components/layout/AppShell';
 import { ArrowLeft, Key, Bot, Timer, Bell, Trash2, RotateCcw, RefreshCw, Volume2, LogOut } from 'lucide-react';
 import { playNotificationSound, playAlarmSound, playClick, playSuccess, playNavSwitch, playToggle, playDelete, playVoiceNotification } from '@/lib/audio';
@@ -51,16 +51,14 @@ export default function SettingsPage() {
   const handleLogout = () => {
     if (confirm('Sair da conta? Seus dados ficam salvos no servidor.')) {
       resetUser();
-      setCurrentUserId(null);
       router.replace('/onboarding');
     }
   };
 
   const handleReset = () => {
-    if (confirm('Tem certeza? Isso apagará TODO seu progresso local.')) {
+    if (confirm('Tem certeza? Isso apagará TODO seu progresso local e no servidor.')) {
       resetUser();
       if (typeof window !== 'undefined') {
-        localStorage.clear();
         indexedDB.deleteDatabase('sistema-evolucao');
         router.push('/');
         window.location.reload();

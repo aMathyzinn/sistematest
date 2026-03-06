@@ -1,42 +1,45 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useUserStore } from '@/stores/userStore';
-import { setCurrentUserId, getUserByToken } from '@/lib/db/queries';
+import { useSettingsStore } from '@/stores/settingsStore';
+import { useUIStore } from '@/stores/uiStore';
+import { setSession, getSessionCookie, getUserByToken } from '@/lib/db/queries';
 import { queueOrPlayVoice } from '@/lib/audio';
 
-// Module-level guard: skip re-validation if we verified within the last 90 s.
-// This prevents rapid F5 reloads from racing getUserByToken and triggering logout.
+// Module-level cache: skip re-validation within 90 s to avoid hammering Supabase
+// on rapid navigations or F5 reloads.
 let lastValidatedToken = '';
 let lastValidatedAt = 0;
 const VALIDATION_TTL_MS = 90_000;
 
 export default function SessionProvider({ children }: { children: React.ReactNode }) {
-  const { userId, token, logout } = useUserStore();
+  const { userId, token, login, logout } = useUserStore();
+  const { initAll: initSettings } = useSettingsStore();
+  const { init: initUI } = useUIStore();
   const router = useRouter();
   const pathname = usePathname();
   const greetedRef = useRef(false);
   const inFlightRef = useRef(false);
 
-  // Wait for zustand localStorage rehydration before acting on null state.
-  // Without this, the brief SSR null values trigger premature redirects.
-  const [hydrated, setHydrated] = useState(false);
-  useEffect(() => { setHydrated(true); }, []);
-
   useEffect(() => {
-    if (!hydrated) return;
+    // Source of truth: cookie (works across PWA/browser on mobile).
+    // The store may also have values if login() was just called.
+    const session = getSessionCookie();
+    const tok = token || session?.token || null;
+    const uid = userId || session?.userId || null;
 
-    if (!userId || !token) {
-      setCurrentUserId(null);
+    if (!tok || !uid) {
+      setSession(null, null);
       if (pathname !== '/onboarding') router.replace('/onboarding');
       return;
     }
 
-    // Recent successful validation for the same token → skip Supabase round-trip
+    // TTL hit: skip round-trip, stores were already initialised on last validation
     const now = Date.now();
-    if (token === lastValidatedToken && now - lastValidatedAt < VALIDATION_TTL_MS) {
-      setCurrentUserId(userId);
+    if (tok === lastValidatedToken && now - lastValidatedAt < VALIDATION_TTL_MS) {
+      setSession(uid, tok);
       if (!greetedRef.current) {
         greetedRef.current = true;
         const hour = new Date().getHours();
@@ -45,43 +48,41 @@ export default function SessionProvider({ children }: { children: React.ReactNod
       return;
     }
 
-    // Prevent concurrent in-flight validations (rapid F5 spam)
     if (inFlightRef.current) return;
     inFlightRef.current = true;
 
-    // Validate that this user still exists in Supabase
-    getUserByToken(token).then((account) => {
+    getUserByToken(tok).then((account) => {
       inFlightRef.current = false;
       if (!account) {
-        // Only logout if the TTL window has also expired (double-check guard)
-        if (token !== lastValidatedToken || Date.now() - lastValidatedAt >= VALIDATION_TTL_MS) {
+        if (tok !== lastValidatedToken || Date.now() - lastValidatedAt >= VALIDATION_TTL_MS) {
           logout();
-          setCurrentUserId(null);
           router.replace('/onboarding');
         }
       } else {
-        lastValidatedToken = token;
+        lastValidatedToken = tok;
         lastValidatedAt = Date.now();
-        setCurrentUserId(account.id);
+        // Hydrate all stores from DB — single source of truth
+        login(account.id, account.token, account.profile, account.levelData);
+        initSettings(account.apiKey, account.settings);
+        initUI(account.uiSettings);
         if (!greetedRef.current) {
           greetedRef.current = true;
           const hour = new Date().getHours();
-          if (hour >= 12 && hour < 18) {
-            queueOrPlayVoice('/audios/boa_tarde.mp3');
-          }
+          if (hour >= 12 && hour < 18) queueOrPlayVoice('/audios/boa_tarde.mp3');
         }
       }
     }).catch(() => {
       inFlightRef.current = false;
-      // Network error — keep session alive, trust localStorage
-      setCurrentUserId(userId);
+      // Network error — keep cookie session alive, _currentUserId already set
+      setSession(uid, tok);
       if (!greetedRef.current) {
         greetedRef.current = true;
         const hour = new Date().getHours();
         if (hour >= 12 && hour < 18) queueOrPlayVoice('/audios/boa_tarde.mp3');
       }
     });
-  }, [hydrated, userId, token]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [userId, token]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return <>{children}</>;
 }
+

@@ -29,6 +29,7 @@ export default function ExercisesPage() {
   const [todayLogs, setTodayLogs] = useState<ExerciseLog[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Form state
   const [name, setName] = useState('');
@@ -64,6 +65,7 @@ export default function ExercisesPage() {
   const handleSave = async () => {
     if (!name.trim()) return;
     setSaving(true);
+    setError(null);
     try {
       await db.addExerciseLog({
         name: name.trim(),
@@ -78,14 +80,20 @@ export default function ExercisesPage() {
       setSets([{ reps: 10, weight: 0 }]);
       setShowForm(false);
       await loadData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao salvar treino');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    await db.deleteExerciseLog(id);
-    await loadData();
+    try {
+      await db.deleteExerciseLog(id);
+      await loadData();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Erro ao deletar treino');
+    }
   };
 
   // Group history by date
@@ -98,6 +106,13 @@ export default function ExercisesPage() {
   return (
     <AppShell>
       <div className="px-4 py-4 space-y-4">
+        {/* Error banner */}
+        {error && (
+          <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2 text-sm text-red-400 flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="ml-2 text-red-400 hover:text-red-300">✕</button>
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">

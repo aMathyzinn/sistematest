@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserStore } from '@/stores/userStore';
 import { useSettingsStore } from '@/stores/settingsStore';
-import { getUserByToken, createUser, seedDefaultChannels, setCurrentUserId, updateUserApiKey } from '@/lib/db/queries';
+import { getUserByToken, createUser, seedDefaultChannels, updateUserApiKey } from '@/lib/db/queries';
 import { KeyRound, User, Target, AlertTriangle, Sparkles, LogIn, Key, Eye, EyeOff, ExternalLink } from 'lucide-react';
 import { queueOrPlayVoice, playVoiceBemVindo, playVoiceApiKey } from '@/lib/audio';
 import AudioSpectrum from '@/components/ui/AudioSpectrum';
@@ -76,7 +76,6 @@ export default function OnboardingPage() {
       const existing = await getUserByToken(token.trim());
       if (existing) {
         // Usuário encontrado — logar direto
-        setCurrentUserId(existing.id);
         login(existing.id, existing.token, existing.profile, existing.levelData);
         if (existing.apiKey) setApiKey(existing.apiKey);
         router.replace('/dashboard');
@@ -97,7 +96,6 @@ export default function OnboardingPage() {
     setError('');
     try {
       const account = await createUser(token, name, profession, selectedObjectives, selectedDifficulties);
-      setCurrentUserId(account.id);
       login(account.id, account.token, account.profile, account.levelData);
       await seedDefaultChannels();
       // Go to API key step, then play voices in sequence

@@ -1,7 +1,6 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import type { UserProfile, UserLevel, UserAttributes } from '@/lib/types';
-import { updateUserLevel } from '@/lib/db/queries';
+import { updateUserLevel, setSession } from '@/lib/db/queries';
 
 // ============================================================
 // CÁLCULOS DE XP E NÍVEL
@@ -42,26 +41,22 @@ const defaultLevel: UserLevel = {
   },
 };
 
-export const useUserStore = create<UserState>()(
-  persist(
-    (set, get) => ({
+export const useUserStore = create<UserState>()((set, get) => ({
       userId: null,
       token: null,
       profile: null,
       level: { ...defaultLevel },
       hasCompletedOnboarding: false,
 
-      login: (userId, token, profile, levelData) =>
-        set({ userId, token, profile, level: levelData, hasCompletedOnboarding: true }),
+      login: (userId, token, profile, levelData) => {
+        setSession(userId, token);
+        set({ userId, token, profile, level: levelData, hasCompletedOnboarding: true });
+      },
 
-      logout: () =>
-        set({
-          userId: null,
-          token: null,
-          profile: null,
-          level: { ...defaultLevel },
-          hasCompletedOnboarding: false,
-        }),
+      logout: () => {
+        setSession(null, null);
+        set({ userId: null, token: null, profile: null, level: { ...defaultLevel }, hasCompletedOnboarding: false });
+      },
 
       setProfile: (profile) => set({ profile }),
 
@@ -99,25 +94,8 @@ export const useUserStore = create<UserState>()(
 
       completeOnboarding: () => set({ hasCompletedOnboarding: true }),
 
-      reset: () =>
-        set({
-          userId: null,
-          token: null,
-          profile: null,
-          level: { ...defaultLevel },
-          hasCompletedOnboarding: false,
-        }),
-    }),
-    {
-      name: 'sistema-user',
-      storage: createJSONStorage(() => {
-        if (typeof window !== 'undefined') return localStorage;
-        return {
-          getItem: () => null,
-          setItem: () => {},
-          removeItem: () => {},
-        };
-      }),
-    }
-  )
-);
+      reset: () => {
+        setSession(null, null);
+        set({ userId: null, token: null, profile: null, level: { ...defaultLevel }, hasCompletedOnboarding: false });
+      },
+    }));

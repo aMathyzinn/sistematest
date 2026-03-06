@@ -23,7 +23,24 @@ import type {
 // SESSÃO ATUAL — definido no login, reutilizado por todas as queries
 // ============================================================
 
+// Eagerly restore userId from the persisted Zustand store on module load.
+// This runs synchronously before any React component mounts, so DB calls in
+// useEffect hooks (children fire before parent effects) work immediately after
+// a page refresh without waiting for SessionProvider to re-set the value.
 let _currentUserId: string | null = null;
+if (typeof window !== 'undefined') {
+  try {
+    const raw = localStorage.getItem('sistema-user');
+    if (raw) {
+      const parsed = JSON.parse(raw) as { state?: { userId?: string } };
+      if (parsed?.state?.userId) {
+        _currentUserId = parsed.state.userId;
+      }
+    }
+  } catch {
+    // localStorage not available or parse error — _currentUserId stays null
+  }
+}
 
 export function setCurrentUserId(id: string | null) {
   _currentUserId = id;

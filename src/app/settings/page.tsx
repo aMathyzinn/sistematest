@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useUserStore } from '@/stores/userStore';
-import { updateUserApiKey, updateUserToken, getUserByToken } from '@/lib/db/queries';
+import { updateUserApiKey, updateUserToken, getUserByToken, setCurrentUserId } from '@/lib/db/queries';
 import AppShell from '@/components/layout/AppShell';
-import { ArrowLeft, Key, Bot, Timer, Bell, Trash2, RotateCcw, RefreshCw, Volume2 } from 'lucide-react';
+import { ArrowLeft, Key, Bot, Timer, Bell, Trash2, RotateCcw, RefreshCw, Volume2, LogOut } from 'lucide-react';
 import { playNotificationSound, playAlarmSound, playClick, playSuccess, playNavSwitch, playToggle, playDelete, playVoiceNotification } from '@/lib/audio';
 
 export default function SettingsPage() {
@@ -45,6 +45,14 @@ export default function SettingsPage() {
       setTokenMsg('Erro ao alterar token. Tente novamente.');
     } finally {
       setTokenLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+    if (confirm('Sair da conta? Seus dados ficam salvos no servidor.')) {
+      resetUser();
+      setCurrentUserId(null);
+      router.replace('/onboarding');
     }
   };
 
@@ -283,6 +291,24 @@ export default function SettingsPage() {
             className="w-full rounded-lg bg-accent-green/10 py-2 text-sm font-medium text-accent-green border border-accent-green/30 hover:bg-accent-green/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {tokenLoading ? 'Alterando...' : 'Confirmar Alteração'}
+          </button>
+        </section>
+
+        {/* Logout */}
+        <section className="rounded-2xl bg-bg-card border border-border p-4 space-y-3">
+          <div className="flex items-center gap-2">
+            <LogOut size={16} className="text-text-secondary" />
+            <h3 className="text-sm font-semibold text-text-primary">Conta</h3>
+          </div>
+          <p className="text-xs text-text-dim">
+            Sair da conta mantém todos os dados salvos. Use seu token para entrar novamente.
+          </p>
+          <button
+            onClick={handleLogout}
+            className="flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-bg-tertiary py-2.5 text-sm font-medium text-text-secondary hover:border-accent-red/40 hover:text-accent-red hover:bg-accent-red/5 transition-colors"
+          >
+            <LogOut size={14} />
+            Sair da conta
           </button>
         </section>
 

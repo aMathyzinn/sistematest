@@ -2,28 +2,44 @@
  * Web Audio API sound effects + narrated voice playback with echo.
  * All tones are generated programmatically — no audio files needed for SFX.
  * Voice lines are loaded from /audios/*.mp3 and passed through an echo chain.
+ *
+ * Uses a SINGLETON AudioContext that is unlocked once per session on the first
+ * user gesture. This prevents the "suspended context" issue where a fresh
+ * AudioContext created after a gesture can't be resumed.
  */
 
-// ─── Autoplay gate ────────────────────────────────────────────────────────────
-// Browsers block AudioContext until a user gesture occurs.
-// Voices queued before a gesture are held here and drained on first interaction.
-let _hasGesture = false;
-const _voiceQueue: string[] = [];
+// ─── Singleton AudioContext ───────────────────────────────────────────────────
+let _sharedCtx: AudioContext | null = null;
 
-/** Called by SoundProvider on first user click — drains the pending voice queue. */
-export function markUserGesture(): void {
-  if (_hasGesture) return;
-  _hasGesture = true;
-  const pending = _voiceQueue.splice(0);
-  for (const src of pending) {
-    playVoiceFile(src);
+function getCtx(): AudioContext | null {
+  if (typeof window === 'undefined') return null;
+  if (_sharedCtx && _sharedCtx.state !== 'closed') return _sharedCtx;
+  try {
+    _sharedCtx = new (window.AudioContext ||
+      (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    return _sharedCtx;
+  } catch {
+    return null;
   }
 }
 
-/**
- * If a user gesture has already occurred, plays immediately.
- * Otherwise queues the voice to fire on the next user interaction.
- */
+// ─── Autoplay gate ────────────────────────────────────────────────────────────
+let _hasGesture = false;
+const _voiceQueue: string[] = [];
+
+/** Called by SoundProvider on first user click — unlocks AudioContext and drains voice queue. */
+export function markUserGesture(): void {
+  if (_hasGesture) return;
+  _hasGesture = true;
+  // Resume the shared context now that we have a user gesture
+  const ctx = getCtx();
+  if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+  // Drain pending voices
+  const pending = _voiceQueue.splice(0);
+  for (const src of pending) playVoiceFile(src);
+}
+
+/** Plays immediately if gesture occurred, otherwise queues for next interaction. */
 export function queueOrPlayVoice(src: string): void {
   if (_hasGesture) {
     playVoiceFile(src);
@@ -32,23 +48,14 @@ export function queueOrPlayVoice(src: string): void {
   }
 }
 
-function getAudioContext(): AudioContext | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    return new (window.AudioContext ||
-      (window as typeof window & { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-  } catch {
-    return null;
-  }
-}
-
+// ─── SFX helpers ─────────────────────────────────────────────────────────────
 function beep(
   ctx: AudioContext,
   frequency: number,
   type: OscillatorType,
   startTime: number,
   duration: number,
-  gain: number
+  gain: number,
 ): void {
   const osc = ctx.createOscillator();
   const gainNode = ctx.createGain();
@@ -62,7 +69,7 @@ function beep(
   osc.stop(startTime + duration);
 }
 
-// ─── Voice file cache ────────────────────────────────────────────────────────
+// ─── Voice file cache ─────────────────────────────────────────────────────────
 const audioBufferCache: Map<string, AudioBuffer> = new Map();
 
 async function loadAudioBuffer(ctx: AudioContext, src: string): Promise<AudioBuffer> {
@@ -76,137 +83,109 @@ async function loadAudioBuffer(ctx: AudioContext, src: string): Promise<AudioBuf
 
 /**
  * Play a narrated voice MP3 with a light echo effect.
- * Only plays if soundEnabled in settingsStore is true.
- * Returns a Promise that resolves when playback ends (or on error).
+ * Uses the shared AudioContext — no gesture race condition.
  */
 export async function playVoiceFile(src: string): Promise<void> {
-  // Dynamically import to avoid circular deps / SSR issues
   const { useSettingsStore } = await import('@/stores/settingsStore');
   if (!useSettingsStore.getState().soundEnabled) return;
 
-  const ctx = getAudioContext();
+  const ctx = getCtx();
   if (!ctx) return;
 
   try {
-    // Resume if browser started the context in suspended state
     if (ctx.state === 'suspended') await ctx.resume();
 
     const buffer = await loadAudioBuffer(ctx, src);
 
-    // Dry path
     const source = ctx.createBufferSource();
     source.buffer = buffer;
 
     const dryGain = ctx.createGain();
     dryGain.gain.value = 0.9;
 
-    // Echo 1 — 300 ms
     const delay1 = ctx.createDelay(2);
-    delay1.delayTime.value = 0.30;
+    delay1.delayTime.value = 0.28;
     const echoGain1 = ctx.createGain();
-    echoGain1.gain.value = 0.04;
+    echoGain1.gain.value = 0.10;
 
-    // Echo 2 — 600 ms (barely audible tail)
     const delay2 = ctx.createDelay(2);
-    delay2.delayTime.value = 0.60;
+    delay2.delayTime.value = 0.56;
     const echoGain2 = ctx.createGain();
-    echoGain2.gain.value = 0.012;
+    echoGain2.gain.value = 0.04;
 
-    // Echo 3 — removed; keep only two very faint taps
     const delay3 = ctx.createDelay(2);
-    delay3.delayTime.value = 0.60;
+    delay3.delayTime.value = 0.84;
     const echoGain3 = ctx.createGain();
-    echoGain3.gain.value = 0.0;
+    echoGain3.gain.value = 0.015;
 
-    // Routing
     source.connect(dryGain);    dryGain.connect(ctx.destination);
-    source.connect(delay1);     delay1.connect(echoGain1);   echoGain1.connect(ctx.destination);
-    source.connect(delay2);     delay2.connect(echoGain2);   echoGain2.connect(ctx.destination);
-    source.connect(delay3);     delay3.connect(echoGain3);   echoGain3.connect(ctx.destination);
+    source.connect(delay1);     delay1.connect(echoGain1);  echoGain1.connect(ctx.destination);
+    source.connect(delay2);     delay2.connect(echoGain2);  echoGain2.connect(ctx.destination);
+    source.connect(delay3);     delay3.connect(echoGain3);  echoGain3.connect(ctx.destination);
 
     source.start(ctx.currentTime);
-
-    await new Promise<void>((resolve) => {
-      source.onended = () => {
-        setTimeout(() => { ctx.close(); resolve(); }, 1000);
-      };
-    });
   } catch (e) {
     console.warn('[voice]', src, e);
-    ctx.close();
   }
 }
 
 // ─── Named voice helpers ──────────────────────────────────────────────────────
-export const playVoiceMissionComplete    = () => playVoiceFile('/audios/missao_concluida.mp3');
-export const playVoiceAllMissionsDone    = () => playVoiceFile('/audios/missoes_concluidas.mp3');
-export const playVoiceBoaTarde           = () => queueOrPlayVoice('/audios/boa_tarde.mp3');
-export const playVoiceBemVindo           = () => playVoiceFile('/audios/bem-vindo.mp3');
-export const playVoiceNotification       = () => playVoiceFile('/audios/notificacao.mp3');
-export const playVoiceMissionCreated     = () => playVoiceFile('/audios/missao_criada.mp3');
+export const playVoiceMissionComplete = () => playVoiceFile('/audios/missao_concluida.mp3');
+export const playVoiceAllMissionsDone = () => playVoiceFile('/audios/missoes_concluidas.mp3');
+export const playVoiceBoaTarde        = () => queueOrPlayVoice('/audios/boa_tarde.mp3');
+export const playVoiceBemVindo        = () => playVoiceFile('/audios/bem-vindo.mp3');
+export const playVoiceNotification    = () => playVoiceFile('/audios/notificacao.mp3');
+export const playVoiceMissionCreated  = () => playVoiceFile('/audios/missao_criada.mp3');
 
 // ─── SFX (generated tones) ────────────────────────────────────────────────────
 
-/** Very short soft tick — generic button click */
 export function playClick(): void {
-  const ctx = getAudioContext();
+  const ctx = getCtx();
   if (!ctx) return;
   beep(ctx, 1000, 'sine', ctx.currentTime, 0.055, 0.12);
-  setTimeout(() => ctx.close(), 200);
 }
 
-/** Two ascending tones — navigation / tab switch */
 export function playNavSwitch(): void {
-  const ctx = getAudioContext();
+  const ctx = getCtx();
   if (!ctx) return;
   const now = ctx.currentTime;
   beep(ctx, 420, 'sine', now, 0.07, 0.1);
   beep(ctx, 620, 'sine', now + 0.065, 0.07, 0.09);
-  setTimeout(() => ctx.close(), 350);
 }
 
-/** Short blip — checkbox / toggle */
 export function playToggle(): void {
-  const ctx = getAudioContext();
+  const ctx = getCtx();
   if (!ctx) return;
   beep(ctx, 860, 'triangle', ctx.currentTime, 0.07, 0.18);
-  setTimeout(() => ctx.close(), 250);
 }
 
-/** Ascending arpeggio — task / mission complete */
 export function playSuccess(): void {
-  const ctx = getAudioContext();
+  const ctx = getCtx();
   if (!ctx) return;
   const now = ctx.currentTime;
-  beep(ctx, 523, 'sine', now,       0.12, 0.28); // C5
-  beep(ctx, 659, 'sine', now + 0.1, 0.12, 0.28); // E5
-  beep(ctx, 784, 'sine', now + 0.2, 0.18, 0.28); // G5
-  setTimeout(() => ctx.close(), 700);
+  beep(ctx, 523, 'sine', now,       0.12, 0.28);
+  beep(ctx, 659, 'sine', now + 0.1, 0.12, 0.28);
+  beep(ctx, 784, 'sine', now + 0.2, 0.18, 0.28);
 }
 
-/** Short descending tone — delete / fail */
 export function playDelete(): void {
-  const ctx = getAudioContext();
+  const ctx = getCtx();
   if (!ctx) return;
   const now = ctx.currentTime;
   beep(ctx, 380, 'sine', now,        0.05, 0.18);
   beep(ctx, 260, 'sine', now + 0.05, 0.11, 0.14);
-  setTimeout(() => ctx.close(), 350);
 }
 
-/** Soft notification beep — two short sine tones */
 export function playNotificationSound(): void {
-  const ctx = getAudioContext();
+  const ctx = getCtx();
   if (!ctx) return;
   const now = ctx.currentTime;
   beep(ctx, 880,  'sine', now,        0.15, 0.4);
   beep(ctx, 1100, 'sine', now + 0.18, 0.15, 0.35);
-  setTimeout(() => ctx.close(), 800);
 }
 
-/** Urgent alarm sound — three square-wave pulses */
 export function playAlarmSound(): void {
-  const ctx = getAudioContext();
+  const ctx = getCtx();
   if (!ctx) return;
   const now = ctx.currentTime;
   const interval = 0.32;
@@ -214,5 +193,4 @@ export function playAlarmSound(): void {
     beep(ctx, 440, 'square', now + i * interval,        0.25, 0.35);
     beep(ctx, 880, 'square', now + i * interval + 0.26, 0.06, 0.2);
   }
-  setTimeout(() => ctx.close(), 1500);
 }

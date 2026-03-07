@@ -26,7 +26,7 @@ import {
   Volume2,
 } from 'lucide-react';
 import { useUserStore } from '@/stores/userStore';
-import { playVoiceFileTracked } from '@/lib/audio';
+import { playVoiceFileTracked, setTutorialActive } from '@/lib/audio';
 import AudioSpectrum from '@/components/ui/AudioSpectrum';
 
 // ============================================================
@@ -328,10 +328,16 @@ export default function TutorialOverlay({ onComplete }: Props) {
 
   useEffect(() => { setMounted(true); }, []);
 
+  // Block all non-tutorial audio while overlay is alive
+  useEffect(() => {
+    setTutorialActive(true);
+    return () => setTutorialActive(false);
+  }, []);
+
   // ── Navigation ─────────────────────────────────────────────
   const goNext = () => {
     if (!audioReady) return;
-    if (isLast) { onComplete(); return; }
+    if (isLast) { setTutorialActive(false); onComplete(); return; }
     setDir(1);
     setStep((s) => s + 1);
   };
@@ -440,7 +446,7 @@ export default function TutorialOverlay({ onComplete }: Props) {
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          onClick={onComplete}
+          onClick={() => { setTutorialActive(false); onComplete(); }}
           className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-text-dim border border-border/50 bg-bg-card/70 backdrop-blur-sm hover:text-text-secondary transition-colors"
         >
           <X size={11} />

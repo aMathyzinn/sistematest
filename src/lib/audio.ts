@@ -37,6 +37,20 @@ export function getAnalyser(): AnalyserNode | null {
 let _hasGesture = false;
 const _voiceQueue: string[] = [];
 
+// ─── Tutorial gate ────────────────────────────────────────────────────────────
+// While the tutorial is running, all normal voice calls (playVoiceFile,
+// queueOrPlayVoice) are silently dropped so they cannot overlap with narration.
+let _tutorialActive = false;
+
+/**
+ * Call with `true` when the tutorial overlay mounts and `false` when it
+ * completes or is skipped. Also clears any pending voice queue.
+ */
+export function setTutorialActive(active: boolean): void {
+  _tutorialActive = active;
+  if (active) _voiceQueue.splice(0); // flush anything queued before tutorial
+}
+
 /** Called by SoundProvider on first user click — unlocks AudioContext and drains voice queue. */
 export function markUserGesture(): void {
   if (_hasGesture) return;
@@ -44,18 +58,67 @@ export function markUserGesture(): void {
   // Resume the shared context now that we have a user gesture
   const ctx = getCtx();
   if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
-  // Drain pending voices
-  const pending = _voiceQueue.splice(0);
-  for (const src of pending) playVoiceFile(src);
+  // Drain pending voices (only if tutorial is not running)
+  if (!_tutorialActive) {
+    const pending = _voiceQueue.splice(0);
+    for (const src of pending) playVoiceFile(src);
+  }
 }
 
 /** Plays immediately if gesture occurred, otherwise queues for next interaction. */
 export function queueOrPlayVoice(src: string): void {
+  if (_tutorialActive) return; // tutorial blocks all normal voice audio
   if (_hasGesture) {
     playVoiceFile(src);
   } else {
     _voiceQueue.push(src);
   }
+}
+
+// ─── Shared voice chain builder ─────────────────────────────────────────────
+/**
+ * Wires source → dry + 2 light echo taps → compressor → analyser/destination.
+ * This is the single canonical voice processing chain used by EVERY mp3 playback
+ * (both playVoiceFile and playVoiceFileTracked) so all audio sounds identical.
+ *
+ * Echo config (light, same as original API-key area):
+ *   tap1: 0.18 s, gain 0.04
+ *   tap2: 0.36 s, gain 0.012
+ */
+function wireVoiceChain(
+  ctx: AudioContext,
+  source: AudioBufferSourceNode,
+): void {
+  const compressor = ctx.createDynamicsCompressor();
+  compressor.threshold.value = -10;
+  compressor.knee.value      = 4;
+  compressor.ratio.value     = 8;
+  compressor.attack.value    = 0.003;
+  compressor.release.value   = 0.18;
+
+  if (_analyser) {
+    compressor.connect(_analyser);
+  } else {
+    compressor.connect(ctx.destination);
+  }
+
+  const dryGain = ctx.createGain();
+  dryGain.gain.value = 0.92;
+  dryGain.connect(compressor);
+
+  const makeEcho = (delayTime: number, gain: number) => {
+    const d = ctx.createDelay(1);
+    d.delayTime.value = delayTime;
+    const g = ctx.createGain();
+    g.gain.value = gain;
+    d.connect(g);
+    g.connect(compressor);
+    return d;
+  };
+
+  source.connect(dryGain);
+  source.connect(makeEcho(0.18, 0.04));
+  source.connect(makeEcho(0.36, 0.012));
 }
 
 // ─── SFX helpers ─────────────────────────────────────────────────────────────
@@ -105,6 +168,8 @@ async function loadAudioBuffer(ctx: AudioContext, src: string): Promise<AudioBuf
  * loudness, making the echo sound identical across all mp3s.
  */
 export async function playVoiceFile(src: string): Promise<void> {
+  if (_tutorialActive) return; // tutorial has exclusive control over audio
+
   const { useSettingsStore } = await import('@/stores/settingsStore');
   if (!useSettingsStore.getState().soundEnabled) return;
 
@@ -113,56 +178,10 @@ export async function playVoiceFile(src: string): Promise<void> {
 
   try {
     if (ctx.state === 'suspended') await ctx.resume();
-
     const buffer = await loadAudioBuffer(ctx, src);
-
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-
-    // ── Master compressor / limiter ──────────────────────────────────────
-    // Normalises loudness differences between files so the echo
-    // mix is proportionally equal regardless of source recording level.
-    const compressor = ctx.createDynamicsCompressor();
-    compressor.threshold.value = -10;
-    compressor.knee.value      = 4;
-    compressor.ratio.value     = 8;
-    compressor.attack.value    = 0.003;
-    compressor.release.value   = 0.18;
-
-    // Route through the shared analyser (already wired to destination in getCtx).
-    // This is the SINGLE path to the speakers — avoids the doubling/phase issue
-    // that occurred when source was also connected directly to the analyser.
-    if (_analyser) {
-      compressor.connect(_analyser);
-    } else {
-      compressor.connect(ctx.destination);
-    }
-
-    // ── Dry signal ───────────────────────────────────────────────────────
-    const dryGain = ctx.createGain();
-    dryGain.gain.value = 0.85;
-    dryGain.connect(compressor);
-
-    // ── Three evenly-spaced echo taps ────────────────────────────────────
-    const makeEcho = (delayTime: number, gain: number) => {
-      const d = ctx.createDelay(2);
-      d.delayTime.value = delayTime;
-      const g = ctx.createGain();
-      g.gain.value = gain;
-      d.connect(g);
-      g.connect(compressor);
-      return d;
-    };
-
-    const echo1 = makeEcho(0.20, 0.18);
-    const echo2 = makeEcho(0.40, 0.055);
-    const echo3 = makeEcho(0.60, 0.018);
-
-    source.connect(dryGain);
-    source.connect(echo1);
-    source.connect(echo2);
-    source.connect(echo3);
-
+    wireVoiceChain(ctx, source);
     await new Promise<void>((resolve) => {
       source.onended = () => resolve();
       source.start(ctx.currentTime);
@@ -198,37 +217,7 @@ export async function playVoiceFileTracked(
 
     const source = ctx.createBufferSource();
     source.buffer = buffer;
-
-    const compressor = ctx.createDynamicsCompressor();
-    compressor.threshold.value = -10;
-    compressor.knee.value      = 4;
-    compressor.ratio.value     = 8;
-    compressor.attack.value    = 0.003;
-    compressor.release.value   = 0.18;
-
-    if (_analyser) {
-      compressor.connect(_analyser);
-    } else {
-      compressor.connect(ctx.destination);
-    }
-
-    const dryGain = ctx.createGain();
-    dryGain.gain.value = 0.85;
-    dryGain.connect(compressor);
-
-    const makeEcho = (delayTime: number, gain: number) => {
-      const d = ctx.createDelay(2);
-      d.delayTime.value = delayTime;
-      const g = ctx.createGain();
-      g.gain.value = gain;
-      d.connect(g);
-      g.connect(compressor);
-      return d;
-    };
-    source.connect(dryGain);
-    source.connect(makeEcho(0.20, 0.18));
-    source.connect(makeEcho(0.40, 0.055));
-    source.connect(makeEcho(0.60, 0.018));
+    wireVoiceChain(ctx, source);
 
     source.onended = () => resolveEnded();
     source.start(ctx.currentTime);

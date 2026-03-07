@@ -13,6 +13,7 @@ interface SettingsState {
   notificationsEnabled: boolean;
   soundEnabled: boolean;
   language: 'pt-BR' | 'en';
+  hasSeenTutorial: boolean;
 
   // Actions
   initAll: (apiKey: string, settings: UserSettings) => void;
@@ -22,6 +23,7 @@ interface SettingsState {
   setNotifications: (enabled: boolean) => void;
   setSoundEnabled: (enabled: boolean) => void;
   setLanguage: (lang: 'pt-BR' | 'en') => void;
+  setHasSeenTutorial: (seen: boolean) => void;
 }
 
 function buildSettings(s: SettingsState): UserSettings {
@@ -31,6 +33,7 @@ function buildSettings(s: SettingsState): UserSettings {
     soundEnabled: s.soundEnabled,
     notificationsEnabled: s.notificationsEnabled,
     language: s.language,
+    hasSeenTutorial: s.hasSeenTutorial,
   };
 }
 
@@ -46,6 +49,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   notificationsEnabled: false,
   soundEnabled: true,
   language: 'pt-BR',
+  hasSeenTutorial: false,
 
   initAll: (apiKey, settings) => set({
     apiKey,
@@ -54,6 +58,7 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
     soundEnabled: settings.soundEnabled,
     notificationsEnabled: settings.notificationsEnabled,
     language: settings.language as 'pt-BR' | 'en',
+    hasSeenTutorial: settings.hasSeenTutorial ?? false,
   }),
 
   setApiKey: (key) => set({ apiKey: key }),
@@ -82,5 +87,10 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
   setLanguage: (lang) => {
     set({ language: lang });
     upsertUserSettings(buildSettings({ ...get(), language: lang })).catch(() => {});
+  },
+
+  setHasSeenTutorial: (seen) => {
+    set({ hasSeenTutorial: seen });
+    upsertUserSettings(buildSettings({ ...get(), hasSeenTutorial: seen })).catch(() => {});
   },
 }));

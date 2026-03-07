@@ -31,6 +31,7 @@ export interface UserSettings {
   soundEnabled: boolean;
   notificationsEnabled: boolean;
   language: string;
+  hasSeenTutorial?: boolean;
 }
 
 export interface UserUISettings {
@@ -44,6 +45,7 @@ export const DEFAULT_SETTINGS: UserSettings = {
   soundEnabled: true,
   notificationsEnabled: false,
   language: 'pt-BR',
+  hasSeenTutorial: false,
 };
 
 export const DEFAULT_UI_SETTINGS: UserUISettings = {

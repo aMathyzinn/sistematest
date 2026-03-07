@@ -10,11 +10,11 @@ import {
 } from 'lucide-react';
 
 const tabs = [
-  { href: '/chat', icon: MessageSquare, label: 'Sistema' },
-  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/tasks', icon: ListTodo, label: 'Tarefas' },
-  { href: '/exercises', icon: Dumbbell, label: 'Treinos' },
-  { href: '/projects', icon: FolderKanban, label: 'Projetos' },
+  { href: '/chat', icon: MessageSquare, label: 'Sistema', tutorial: 'nav-chat' },
+  { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', tutorial: 'nav-dashboard' },
+  { href: '/tasks', icon: ListTodo, label: 'Tarefas', tutorial: 'nav-tasks' },
+  { href: '/exercises', icon: Dumbbell, label: 'Treinos', tutorial: 'nav-exercises' },
+  { href: '/projects', icon: FolderKanban, label: 'Projetos', tutorial: 'nav-projects' },
 ];
 
 export default function BottomNav() {
@@ -33,6 +33,7 @@ export default function BottomNav() {
               key={tab.href}
               onClick={() => router.push(tab.href)}
               data-sound={isActive ? 'none' : 'nav'}
+              data-tutorial={tab.tutorial}
               className={`flex flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 transition-all duration-200 ${
                 isActive
                   ? 'text-accent-purple-light'

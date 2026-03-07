@@ -14,7 +14,9 @@ export default function Header() {
       <div className="mx-auto flex max-w-lg items-center justify-between px-4 py-3">
         {/* Level Badge */}
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-purple/20 border border-accent-purple/30 animate-pulse-glow">
+          <div
+            data-tutorial="level-badge"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent-purple/20 border border-accent-purple/30 animate-pulse-glow">
             <span className="text-sm font-bold text-accent-purple-light">
               {level.level}
             </span>

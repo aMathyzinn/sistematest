@@ -27,6 +27,8 @@ create table if not exists users (
   interests text[] not null default '{}',
   level_data jsonb not null default '{"level":1,"xp":0,"xpToNext":100,"totalXp":0,"attributes":{"discipline":1,"focus":1,"consistency":1,"strength":1,"knowledge":1}}',
   api_key text not null default '',
+  settings jsonb not null default '{"pomodoroWork":25,"pomodoroShort":5,"pomodoroLong":15,"pomodoroSessions":4,"theme":"dark","language":"pt-BR","notifications":true,"sounds":true}',
+  ui_settings jsonb not null default '{"sidebarCollapsed":false,"activeWidgets":["missions","tasks","pomodoro","stats"],"widgetLayout":[]}',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

@@ -284,24 +284,41 @@ export async function createUser(
     totalXp: 0,
     attributes: { discipline: 1, focus: 1, consistency: 1, strength: 1, knowledge: 1 },
   };
+
+  const baseRecord = {
+    token: token.trim(),
+    name: name.trim(),
+    profession: profession.trim(),
+    objectives,
+    difficulties,
+    interests: [],
+    level_data: defaultLevel,
+    api_key: '',
+  };
+
+  // First try with new columns (post-migration schema)
   const { data, error } = await supabase
     .from('users')
-    .insert({
-      token: token.trim(),
-      name: name.trim(),
-      profession: profession.trim(),
-      objectives,
-      difficulties,
-      interests: [],
-      level_data: defaultLevel,
-      api_key: '',
-      settings: DEFAULT_SETTINGS,
-      ui_settings: DEFAULT_UI_SETTINGS,
-    })
+    .insert({ ...baseRecord, settings: DEFAULT_SETTINGS, ui_settings: DEFAULT_UI_SETTINGS })
     .select()
     .single();
-  if (error) throw error;
-  return toUserAccount(data as Record<string, unknown>);
+
+  if (!error) return toUserAccount(data as Record<string, unknown>);
+
+  // If the error is about missing columns, fall back to the pre-migration schema.
+  // The toUserAccount mapper will fill in default values from DEFAULT_SETTINGS/DEFAULT_UI_SETTINGS.
+  const errMsg = (error as { message?: string }).message || '';
+  if (errMsg.includes('settings') || errMsg.includes('ui_settings') || errMsg.includes('column') || (error as { code?: string }).code === 'PGRST204') {
+    const { data: d2, error: e2 } = await supabase
+      .from('users')
+      .insert(baseRecord)
+      .select()
+      .single();
+    if (e2) throw e2;
+    return toUserAccount(d2 as Record<string, unknown>);
+  }
+
+  throw error;
 }
 
 export async function updateUserLevel(userId: string, levelData: UserLevel): Promise<void> {

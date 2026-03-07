@@ -102,8 +102,10 @@ export default function OnboardingPage() {
       setStep(4);
       playVoiceBemVindo().then(() => playVoiceApiKey());
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (msg.includes('duplicate') || msg.includes('unique')) {
+      const pgErr = e as { code?: string; message?: string };
+      const msg = pgErr.message ?? (e instanceof Error ? e.message : String(e));
+      const code = pgErr.code ?? '';
+      if (code === '23505' || msg.includes('duplicate') || msg.includes('unique')) {
         setError('Este token já está em uso. Tente outro.');
         setStep(0);
         setIsNewUser(false);

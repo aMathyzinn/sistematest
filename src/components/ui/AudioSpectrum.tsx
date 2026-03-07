@@ -29,8 +29,11 @@ export default function AudioSpectrum({
       rafRef.current = requestAnimationFrame(draw);
 
       const analyser = getAnalyser();
-      const W = canvas.width;
-      const H = canvas.height;
+      // Use logical (CSS) dimensions — the context is already scaled by DPR
+      // from the ResizeObserver, so drawing in physical pixels would make bars
+      // appear tiny / below the visible area on high-DPI mobile screens.
+      const W = canvas.offsetWidth  || canvas.width;
+      const H = canvas.offsetHeight || canvas.height;
 
       ctx2d.clearRect(0, 0, W, H);
 

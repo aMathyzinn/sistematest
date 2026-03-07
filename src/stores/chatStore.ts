@@ -150,7 +150,7 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
         },
       },
       {
-        apiKey: apiKey || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '',
+        apiKey,
         model: aiModel,
         signal: abort.signal,
       }

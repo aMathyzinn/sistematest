@@ -64,7 +64,7 @@ async function executeAction(action: AIAction): Promise<string> {
         category: action.payload.category || 'custom',
         priority: action.payload.priority || 'medium',
         status: 'pending',
-        xpReward: action.payload.xpReward || 20,
+        xpReward: Math.min(Math.max(1, action.payload.xpReward ?? 20), 200),
         dueDate: action.payload.dueDate,
       });
       return `✅ Tarefa criada: ${task.title}`;
@@ -97,7 +97,7 @@ async function executeAction(action: AIAction): Promise<string> {
         description: action.payload.description || '',
         type: action.payload.type,
         status: 'pending',
-        xpReward: action.payload.xpReward || 30,
+        xpReward: Math.min(Math.max(1, action.payload.xpReward ?? 30), 500),
         attributeBonus: action.payload.attributeBonus || {},
         steps,
         target: steps.length || action.payload.target,
@@ -110,13 +110,14 @@ async function executeAction(action: AIAction): Promise<string> {
 
     case 'AWARD_XP': {
       const attr = action.payload.attribute as keyof UserAttributes | undefined;
-      useUserStore.getState().addXP(action.payload.amount, attr);
+      const cappedXP = Math.min(Math.max(1, action.payload.amount), 500);
+      useUserStore.getState().addXP(cappedXP, attr);
       const today = new Date().toISOString().split('T')[0];
       const log = await db.getDailyLog(today);
       await db.upsertDailyLog(today, {
-        xpEarned: (log?.xpEarned || 0) + action.payload.amount,
+        xpEarned: (log?.xpEarned || 0) + cappedXP,
       });
-      return `⭐ +${action.payload.amount} XP${attr ? ` (${attr})` : ''}`;
+      return `⭐ +${cappedXP} XP${attr ? ` (${attr})` : ''}`;
     }
 
     case 'UPDATE_LAYOUT': {
@@ -197,14 +198,13 @@ async function executeAction(action: AIAction): Promise<string> {
     }
 
     case 'CREATE_PROJECT': {
-      const { v4 } = await import('uuid');
       const project = await db.addProject({
         title: action.payload.title,
         description: action.payload.description,
         status: 'active',
         deadline: action.payload.deadline,
         progress: 0,
-        tasks: (action.payload.tasks || []).map((t: string) => ({ id: v4(), title: t, done: false })),
+        tasks: (action.payload.tasks || []).map((t: string) => ({ id: uuidv4(), title: t, done: false })),
       });
       return `🗂️ Projeto criado: ${project.title}`;
     }
@@ -222,8 +222,7 @@ async function executeAction(action: AIAction): Promise<string> {
       const projects = await db.getAllProjects();
       const target = projects.find((p) => p.id === action.payload.projectId);
       if (!target) return `⚠️ Projeto não encontrado`;
-      const { v4 } = await import('uuid');
-      const newTask = { id: v4(), title: action.payload.title, done: false };
+      const newTask = { id: uuidv4(), title: action.payload.title, done: false };
       const updatedTasks = [...target.tasks, newTask];
       const progress = Math.round((updatedTasks.filter((t) => t.done).length / updatedTasks.length) * 100);
       await db.updateProject(target.id, { tasks: updatedTasks, progress });

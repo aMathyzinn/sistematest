@@ -38,7 +38,7 @@ export default function PomodoroTimer({ compact = false }: { compact?: boolean }
   useEffect(() => {
     db.getTodayPomodoroSessions().then((sessions) => {
       setSessionsCompleted(sessions.filter(s => s.type === 'focus' && s.completedAt).length);
-    });
+    }).catch(() => {});
   }, []);
 
   // Timer logic
@@ -48,7 +48,7 @@ export default function PomodoroTimer({ compact = false }: { compact?: boolean }
         setTimeLeft((t) => t - 1);
       }, 1000);
     } else if (timeLeft === 0 && isRunning) {
-      handleSessionEnd();
+      handleSessionEnd().catch(() => {});
     }
 
     return () => {
@@ -75,50 +75,54 @@ export default function PomodoroTimer({ compact = false }: { compact?: boolean }
   }, [isRunning]);
 
   const handleSessionEnd = async () => {
-    setIsRunning(false);
+    try {
+      setIsRunning(false);
 
-    if (state === 'focus') {
-      const newCount = sessionsCompleted + 1;
-      setSessionsCompleted(newCount);
+      if (state === 'focus') {
+        const newCount = sessionsCompleted + 1;
+        setSessionsCompleted(newCount);
 
-      // Registrar sessão
-      await db.addPomodoroSession({
-        startedAt: new Date(Date.now() - pomodoro.focusDuration * 60000).toISOString(),
-        completedAt: new Date().toISOString(),
-        duration: pomodoro.focusDuration,
-        type: 'focus',
-      });
-
-      // XP por sessão completada
-      addXP(15, 'focus');
-
-      // Atualizar daily log
-      const today = new Date().toISOString().split('T')[0];
-      const log = await db.getDailyLog(today);
-      await db.upsertDailyLog(today, {
-        pomodoroSessions: (log?.pomodoroSessions || 0) + 1,
-        xpEarned: (log?.xpEarned || 0) + 15,
-      });
-
-      // Próximo: break ou long break
-      if (newCount % pomodoro.sessionsUntilLongBreak === 0) {
-        setState('long_break');
-        setTimeLeft(pomodoro.longBreakDuration * 60);
-      } else {
-        setState('break');
-        setTimeLeft(pomodoro.breakDuration * 60);
-      }
-
-      // Notificação
-      if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-        new Notification('⚔️ Sessão concluída!', {
-          body: `+15 XP de Foco. ${newCount} sessões hoje.`,
+        // Registrar sessão
+        await db.addPomodoroSession({
+          startedAt: new Date(Date.now() - pomodoro.focusDuration * 60000).toISOString(),
+          completedAt: new Date().toISOString(),
+          duration: pomodoro.focusDuration,
+          type: 'focus',
         });
+
+        // XP por sessão completada
+        addXP(15, 'focus');
+
+        // Atualizar daily log
+        const today = new Date().toISOString().split('T')[0];
+        const log = await db.getDailyLog(today);
+        await db.upsertDailyLog(today, {
+          pomodoroSessions: (log?.pomodoroSessions || 0) + 1,
+          xpEarned: (log?.xpEarned || 0) + 15,
+        });
+
+        // Próximo: break ou long break
+        if (newCount % pomodoro.sessionsUntilLongBreak === 0) {
+          setState('long_break');
+          setTimeLeft(pomodoro.longBreakDuration * 60);
+        } else {
+          setState('break');
+          setTimeLeft(pomodoro.breakDuration * 60);
+        }
+
+        // Notificação
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          new Notification('⚔️ Sessão concluída!', {
+            body: `+15 XP de Foco. ${newCount} sessões hoje.`,
+          });
+        }
+      } else {
+        // Break terminou
+        setState('focus');
+        setTimeLeft(pomodoro.focusDuration * 60);
       }
-    } else {
-      // Break terminou
-      setState('focus');
-      setTimeLeft(pomodoro.focusDuration * 60);
+    } catch {
+      // DB error — timer state already updated, just skip persistence
     }
   };
 

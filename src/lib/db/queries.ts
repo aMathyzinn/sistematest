@@ -102,11 +102,6 @@ export function getSessionCookie(): { userId: string; token: string } | null {
   }
 }
 
-/** @deprecated Use setSession() instead. */
-export function setCurrentUserId(id: string | null): void {
-  _currentUserId = id;
-}
-
 function getUserId(): string {
   if (!_currentUserId) throw new Error('Usuário não autenticado');
   return _currentUserId;
@@ -532,7 +527,7 @@ export async function updateChannel(id: string, updates: Partial<ChatChannel>): 
   const patch: Record<string, unknown> = {};
   if (updates.lastMessageAt !== undefined) patch.last_message_at = updates.lastMessageAt;
   if (updates.name !== undefined) patch.name = updates.name;
-  const { error } = await supabase.from('chat_channels').update(patch).eq('id', id);
+  const { error } = await supabase.from('chat_channels').update(patch).eq('id', id).eq('user_id', getUserId());
   if (error) throw error;
 }
 
@@ -550,6 +545,15 @@ export async function deleteChannel(id: string): Promise<void> {
 // ============================================================
 
 export async function getMessagesByChannel(channelId: string): Promise<ChatMessage[]> {
+  // Verify channel belongs to current user before fetching messages
+  const { data: ch } = await supabase
+    .from('chat_channels')
+    .select('id')
+    .eq('id', channelId)
+    .eq('user_id', getUserId())
+    .maybeSingle();
+  if (!ch) return [];
+
   const { data, error } = await supabase
     .from('chat_messages')
     .select('*')

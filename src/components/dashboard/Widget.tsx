@@ -79,9 +79,13 @@ function MissionsTodayWidget({ title }: { title: string }) {
   const [missions, setMissions] = useState<Mission[]>([]);
 
   const loadMissions = async () => {
-    const today = new Date().toISOString().split('T')[0];
-    const data = await db.getMissionsByDate(today);
-    setMissions(data);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const data = await db.getMissionsByDate(today);
+      setMissions(data);
+    } catch {
+      // DB not ready or user not authenticated yet
+    }
   };
 
   useEffect(() => {
@@ -118,7 +122,7 @@ function RoutineTodayWidget({ title }: { title: string }) {
         (b) => !b.days || b.days.length === 0 || b.days.includes(today)
       );
       setBlocks(filtered.sort((a, b) => a.startTime.localeCompare(b.startTime)));
-    });
+    }).catch(() => {});
   }, []);
 
   return (
@@ -156,7 +160,7 @@ function DailyStatsWidget({ title }: { title: string }) {
           xp: log.xpEarned,
         });
       }
-    });
+    }).catch(() => {});
   }, []);
 
   return (

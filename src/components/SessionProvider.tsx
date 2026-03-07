@@ -23,6 +23,13 @@ export default function SessionProvider({ children }: { children: React.ReactNod
   const greetedRef = useRef(false);
   const inFlightRef = useRef(false);
 
+  function playGreetingOnce() {
+    if (greetedRef.current) return;
+    greetedRef.current = true;
+    const hour = new Date().getHours();
+    if (hour >= 12 && hour < 18) queueOrPlayVoice('/audios/boa_tarde.mp3');
+  }
+
   useEffect(() => {
     // Source of truth: cookie (works across PWA/browser on mobile).
     // The store may also have values if login() was just called.
@@ -40,11 +47,7 @@ export default function SessionProvider({ children }: { children: React.ReactNod
     const now = Date.now();
     if (tok === lastValidatedToken && now - lastValidatedAt < VALIDATION_TTL_MS) {
       setSession(uid, tok);
-      if (!greetedRef.current) {
-        greetedRef.current = true;
-        const hour = new Date().getHours();
-        if (hour >= 12 && hour < 18) queueOrPlayVoice('/audios/boa_tarde.mp3');
-      }
+      playGreetingOnce();
       return;
     }
 
@@ -65,21 +68,13 @@ export default function SessionProvider({ children }: { children: React.ReactNod
         login(account.id, account.token, account.profile, account.levelData);
         initSettings(account.apiKey, account.settings);
         initUI(account.uiSettings);
-        if (!greetedRef.current) {
-          greetedRef.current = true;
-          const hour = new Date().getHours();
-          if (hour >= 12 && hour < 18) queueOrPlayVoice('/audios/boa_tarde.mp3');
-        }
+        playGreetingOnce();
       }
     }).catch(() => {
       inFlightRef.current = false;
       // Network error — keep cookie session alive, _currentUserId already set
       setSession(uid, tok);
-      if (!greetedRef.current) {
-        greetedRef.current = true;
-        const hour = new Date().getHours();
-        if (hour >= 12 && hour < 18) queueOrPlayVoice('/audios/boa_tarde.mp3');
-      }
+      playGreetingOnce();
     });
   }, [userId, token]); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -21,15 +21,19 @@ export default function MissionsPage() {
   const [filter, setFilter] = useState<'all' | MissionType>('all');
 
   const loadMissions = useCallback(async () => {
-    const today = new Date().toISOString().split('T')[0];
-    let data = await db.getMissionsByDate(today);
-    if (data.length === 0) {
-      data = await db.getAllMissions();
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      let data = await db.getMissionsByDate(today);
+      if (data.length === 0) {
+        data = await db.getAllMissions();
+      }
+      if (filter !== 'all') {
+        data = data.filter((m) => m.type === filter);
+      }
+      setMissions(data);
+    } catch {
+      // DB not ready or user not authenticated yet
     }
-    if (filter !== 'all') {
-      data = data.filter((m) => m.type === filter);
-    }
-    setMissions(data);
   }, [filter]);
 
   useEffect(() => {

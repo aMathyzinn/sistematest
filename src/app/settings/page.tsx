@@ -56,7 +56,7 @@ export default function SettingsPage() {
   };
 
   const handleReset = () => {
-    if (confirm('Tem certeza? Isso apagará TODO seu progresso local e no servidor.')) {
+    if (confirm('Tem certeza? Isso encerrará sua sessão e limpará os dados locais. Seus dados no servidor serão mantidos.')) {
       resetUser();
       if (typeof window !== 'undefined') {
         indexedDB.deleteDatabase('sistema-evolucao');
@@ -149,8 +149,10 @@ export default function SettingsPage() {
               <label className="text-[10px] text-text-dim">Foco (min)</label>
               <input
                 type="number"
+                min="1"
+                max="120"
                 value={pomodoro.focusDuration}
-                onChange={(e) => updatePomodoro({ focusDuration: +e.target.value })}
+                onChange={(e) => updatePomodoro({ focusDuration: Math.min(120, Math.max(1, +e.target.value)) })}
                 className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2 text-sm text-text-primary focus:border-accent-purple focus:outline-none"
               />
             </div>
@@ -158,8 +160,10 @@ export default function SettingsPage() {
               <label className="text-[10px] text-text-dim">Pausa (min)</label>
               <input
                 type="number"
+                min="1"
+                max="60"
                 value={pomodoro.breakDuration}
-                onChange={(e) => updatePomodoro({ breakDuration: +e.target.value })}
+                onChange={(e) => updatePomodoro({ breakDuration: Math.min(60, Math.max(1, +e.target.value)) })}
                 className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2 text-sm text-text-primary focus:border-accent-purple focus:outline-none"
               />
             </div>
@@ -167,8 +171,10 @@ export default function SettingsPage() {
               <label className="text-[10px] text-text-dim">Pausa longa (min)</label>
               <input
                 type="number"
+                min="1"
+                max="60"
                 value={pomodoro.longBreakDuration}
-                onChange={(e) => updatePomodoro({ longBreakDuration: +e.target.value })}
+                onChange={(e) => updatePomodoro({ longBreakDuration: Math.min(60, Math.max(1, +e.target.value)) })}
                 className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2 text-sm text-text-primary focus:border-accent-purple focus:outline-none"
               />
             </div>
@@ -176,8 +182,10 @@ export default function SettingsPage() {
               <label className="text-[10px] text-text-dim">Sessões p/ pausa longa</label>
               <input
                 type="number"
+                min="1"
+                max="10"
                 value={pomodoro.sessionsUntilLongBreak}
-                onChange={(e) => updatePomodoro({ sessionsUntilLongBreak: +e.target.value })}
+                onChange={(e) => updatePomodoro({ sessionsUntilLongBreak: Math.min(10, Math.max(1, +e.target.value)) })}
                 className="w-full rounded-lg border border-border bg-bg-tertiary px-3 py-2 text-sm text-text-primary focus:border-accent-purple focus:outline-none"
               />
             </div>

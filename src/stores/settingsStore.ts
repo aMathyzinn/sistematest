@@ -35,7 +35,7 @@ function buildSettings(s: SettingsState): UserSettings {
 }
 
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
-  apiKey: process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '',
+  apiKey: '',
   aiModel: 'openai/gpt-4o-mini',
   pomodoro: {
     focusDuration: 25,

@@ -305,6 +305,11 @@ export async function createUser(
 
   if (!error) return toUserAccount(data as Record<string, unknown>);
 
+  // Unique constraint violation — token already in use. Throw immediately so the
+  // caller can show a meaningful message (do NOT fall through to the column fallback).
+  const pgCode = (error as { code?: string }).code;
+  if (pgCode === '23505') throw error;
+
   // If the error is about missing columns, fall back to the pre-migration schema.
   // The toUserAccount mapper will fill in default values from DEFAULT_SETTINGS/DEFAULT_UI_SETTINGS.
   const errMsg = (error as { message?: string }).message || '';

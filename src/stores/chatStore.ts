@@ -124,14 +124,30 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
         onDone: async (fullText) => {
           set({ isStreaming: false, streamingText: '', streamingChannelId: null, _abort: null });
 
+          if (!fullText.trim()) return;
+
           const parsed: AIResponse = parseAIResponse(fullText);
 
-          const assistantMessage = await db.addMessage({
-            channelId,
-            role: 'assistant',
-            content: parsed.message,
-            actions: parsed.actions,
-          });
+          // Try to persist the assistant message. If it fails (e.g. session expired),
+          // fall back to a local-only message so the user still sees the response.
+          let assistantMessage: ChatMessage;
+          try {
+            assistantMessage = await db.addMessage({
+              channelId,
+              role: 'assistant',
+              content: parsed.message,
+              actions: parsed.actions,
+            });
+          } catch {
+            assistantMessage = {
+              id: `local-${Date.now()}`,
+              channelId,
+              role: 'assistant',
+              content: parsed.message,
+              actions: parsed.actions,
+              createdAt: new Date().toISOString(),
+            };
+          }
 
           set((s) => ({
             messagesByChannel: {
@@ -141,8 +157,10 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
           }));
 
           if (parsed.actions && parsed.actions.length > 0) {
-            const results = await executeActions(parsed.actions);
-            set({ actionResults: results });
+            try {
+              const results = await executeActions(parsed.actions);
+              set({ actionResults: results });
+            } catch { /* ignore action errors */ }
           }
         },
         onError: (err) => {

@@ -48,7 +48,7 @@ export default function ChatPage() {
     loadChannels();
   }, []);
 
-  const loadChannels = async () => {
+  const loadChannels = async (attempt = 0) => {
     try {
       await db.seedDefaultChannels();
       const data = await db.getAllChannels();
@@ -59,8 +59,13 @@ export default function ChatPage() {
       if (!activeChannel && sorted.length > 0) {
         setActiveChannel(sorted[0]);
       }
-    } catch {
-      // DB não pronta
+    } catch (e) {
+      // Session not ready yet (SessionProvider fires after children effects).
+      // Retry up to 8 times with increasing delay.
+      const msg = (e as Error)?.message || '';
+      if (attempt < 8 && (msg.includes('autenticado') || msg.includes('authenticated'))) {
+        setTimeout(() => loadChannels(attempt + 1), 300 * (attempt + 1));
+      }
     }
   };
 

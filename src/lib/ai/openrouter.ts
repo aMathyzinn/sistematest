@@ -8,7 +8,7 @@ const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
 interface StreamCallbacks {
   onChunk: (text: string) => void;
-  onDone: (fullText: string) => void;
+  onDone: (fullText: string) => Promise<void>;
   onError: (error: Error) => void;
 }
 
@@ -89,7 +89,7 @@ export async function streamChat(
 
         const data = trimmed.slice(6);
         if (data === '[DONE]') {
-          callbacks.onDone(fullText);
+          await callbacks.onDone(fullText);
           return;
         }
 
@@ -112,7 +112,7 @@ export async function streamChat(
       }
     }
 
-    callbacks.onDone(fullText);
+    await callbacks.onDone(fullText);
   } catch (error) {
     if ((error as Error).name === 'AbortError') return;
     callbacks.onError(error instanceof Error ? error : new Error('Erro desconhecido'));

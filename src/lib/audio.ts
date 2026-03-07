@@ -172,6 +172,74 @@ export async function playVoiceFile(src: string): Promise<void> {
   }
 }
 
+/**
+ * Like playVoiceFile but returns `{ duration, done }` so callers can:
+ *  - start a countdown using `duration` (seconds, float)
+ *  - await `done` to know when playback finishes
+ * Returns null if sound is disabled or audio context is unavailable.
+ */
+export async function playVoiceFileTracked(
+  src: string,
+): Promise<{ duration: number; done: Promise<void> } | null> {
+  const { useSettingsStore } = await import('@/stores/settingsStore');
+  if (!useSettingsStore.getState().soundEnabled) return null;
+
+  const ctx = getCtx();
+  if (!ctx) return null;
+
+  try {
+    if (ctx.state === 'suspended') await ctx.resume();
+
+    const buffer = await loadAudioBuffer(ctx, src);
+    const duration = buffer.duration;
+
+    let resolveEnded!: () => void;
+    const done = new Promise<void>((res) => { resolveEnded = res; });
+
+    const source = ctx.createBufferSource();
+    source.buffer = buffer;
+
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = -10;
+    compressor.knee.value      = 4;
+    compressor.ratio.value     = 8;
+    compressor.attack.value    = 0.003;
+    compressor.release.value   = 0.18;
+
+    if (_analyser) {
+      compressor.connect(_analyser);
+    } else {
+      compressor.connect(ctx.destination);
+    }
+
+    const dryGain = ctx.createGain();
+    dryGain.gain.value = 0.85;
+    dryGain.connect(compressor);
+
+    const makeEcho = (delayTime: number, gain: number) => {
+      const d = ctx.createDelay(2);
+      d.delayTime.value = delayTime;
+      const g = ctx.createGain();
+      g.gain.value = gain;
+      d.connect(g);
+      g.connect(compressor);
+      return d;
+    };
+    source.connect(dryGain);
+    source.connect(makeEcho(0.20, 0.18));
+    source.connect(makeEcho(0.40, 0.055));
+    source.connect(makeEcho(0.60, 0.018));
+
+    source.onended = () => resolveEnded();
+    source.start(ctx.currentTime);
+
+    return { duration, done };
+  } catch (e) {
+    console.warn('[voice tracked]', src, e);
+    return null;
+  }
+}
+
 // ─── Named voice helpers ──────────────────────────────────────────────────────
 export const playVoiceMissionComplete = () => playVoiceFile('/audios/missao_concluida.mp3');
 export const playVoiceAllMissionsDone = () => playVoiceFile('/audios/missoes_concluidas.mp3');

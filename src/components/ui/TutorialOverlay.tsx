@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   motion,
@@ -23,9 +23,11 @@ import {
   ChevronRight,
   ChevronLeft,
   X,
+  Volume2,
 } from 'lucide-react';
 import { useUserStore } from '@/stores/userStore';
-import { useSettingsStore } from '@/stores/settingsStore';
+import { playVoiceFileTracked } from '@/lib/audio';
+import AudioSpectrum from '@/components/ui/AudioSpectrum';
 
 // ============================================================
 // STEP DEFINITIONS
@@ -43,6 +45,7 @@ interface Step {
   glowColor: string;
   title: string;
   description: string;
+  audioSrc: string;
 }
 
 const STEPS: Step[] = [
@@ -57,6 +60,7 @@ const STEPS: Step[] = [
     title: 'Bem-vindo ao Sistema!',
     description:
       'Seu sistema de evolução pessoal está ativo. Vou te mostrar tudo o que você pode fazer aqui.',
+    audioSrc: '/audios/tutorial/boasvindas.mp3',
   },
   {
     id: 'chat',
@@ -71,6 +75,7 @@ const STEPS: Step[] = [
     title: 'Sistema IA',
     description:
       'Seu assistente pessoal. Converse, peça análises, planeje seu dia — a IA conhece toda a sua evolução e te ajuda a crescer.',
+    audioSrc: '/audios/tutorial/ia_sistema.mp3',
   },
   {
     id: 'dashboard',
@@ -85,6 +90,7 @@ const STEPS: Step[] = [
     title: 'Dashboard',
     description:
       'Sua central de comando. Widgets de XP, missões do dia, tarefas pendentes e rotina — tudo em um só lugar.',
+    audioSrc: '/audios/tutorial/dashboard.mp3',
   },
   {
     id: 'tasks',
@@ -99,6 +105,7 @@ const STEPS: Step[] = [
     title: 'Tarefas',
     description:
       'Crie e organize suas tarefas por prioridade. Cada tarefa concluída rende XP e evolui seus atributos.',
+    audioSrc: '/audios/tutorial/tarefas.mp3',
   },
   {
     id: 'exercises',
@@ -113,6 +120,7 @@ const STEPS: Step[] = [
     title: 'Treinos',
     description:
       'Registre seus treinos, acompanhe séries e repetições. Sua evolução física faz parte da sua jornada.',
+    audioSrc: '/audios/tutorial/treinos.mp3',
   },
   {
     id: 'projects',
@@ -127,6 +135,7 @@ const STEPS: Step[] = [
     title: 'Projetos',
     description:
       'Organize seus projetos em quadros Kanban. Da ideia à entrega, tudo mapeado e acompanhado.',
+    audioSrc: '/audios/tutorial/projetos.mp3',
   },
   {
     id: 'xp',
@@ -141,6 +150,7 @@ const STEPS: Step[] = [
     title: 'Sua Evolução',
     description:
       'Complete tarefas e missões para ganhar XP e subir de nível. Evolua seus atributos: disciplina, foco, consistência, força e conhecimento.',
+    audioSrc: '/audios/tutorial/evolution.mp3',
   },
   {
     id: 'finish',
@@ -153,6 +163,7 @@ const STEPS: Step[] = [
     title: 'Tudo pronto!',
     description:
       'Sua jornada começa agora. Use o Sistema IA para explorar todas as funcionalidades e acelerar sua evolução. Bora crescer!',
+    audioSrc: '/audios/tutorial/boasorte.mp3',
   },
 ];
 
@@ -161,7 +172,7 @@ const STEPS: Step[] = [
 // ============================================================
 
 const enterTransition: Transition = { duration: 0.42, ease: 'circOut' };
-const exitTransition: Transition  = { duration: 0.25, ease: 'easeIn' };
+const exitTransition: Transition = { duration: 0.25, ease: 'easeIn' };
 
 const cardVariants: Variants = {
   enter: (dir: number) => ({
@@ -197,38 +208,99 @@ export default function TutorialOverlay({ onComplete }: Props) {
   const [spotRect, setSpotRect] = useState<DOMRect | null>(null);
   const [mounted, setMounted] = useState(false);
 
+  // ── Audio state ────────────────────────────────────────────
+  const [audioReady, setAudioReady] = useState(false);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const [audioElapsed, setAudioElapsed] = useState(0);
+  // Generation counter — incremented on step change so stale callbacks
+  // from the previous step's audio are silently dropped.
+  const audioGenRef = useRef(0);
+
   const { profile } = useUserStore();
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
   const isFirst = step === 0;
 
-  // ── Spring-animated spotlight position ────────────────────
+  // Derived: countdown seconds / normalised progress (0→1)
+  const countdown = audioReady
+    ? 0
+    : Math.max(0, Math.ceil(audioDuration - audioElapsed));
+  const progress =
+    audioDuration > 0
+      ? Math.min(audioElapsed / audioDuration, 1)
+      : audioReady
+      ? 1
+      : 0;
+
+  // ── Play audio on every step change ──────────────────────
+  useEffect(() => {
+    setAudioReady(false);
+    setAudioElapsed(0);
+    setAudioDuration(0);
+
+    const gen = ++audioGenRef.current;
+
+    playVoiceFileTracked(current.audioSrc).then((result) => {
+      if (audioGenRef.current !== gen) return;
+
+      if (!result) {
+        // Sound disabled or fetch failed — unlock button immediately
+        setAudioReady(true);
+        return;
+      }
+
+      const { duration, done } = result;
+      setAudioDuration(duration);
+
+      const startTs = Date.now();
+      const interval = setInterval(() => {
+        if (audioGenRef.current !== gen) { clearInterval(interval); return; }
+        setAudioElapsed(Math.min((Date.now() - startTs) / 1000, duration));
+      }, 80);
+
+      done.then(() => {
+        clearInterval(interval);
+        if (audioGenRef.current !== gen) return;
+        setAudioElapsed(duration);
+        setAudioReady(true);
+      });
+    });
+
+    // Invalidate the gen counter when step changes or component unmounts
+    return () => { audioGenRef.current++; };
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Spring-animated spotlight ─────────────────────────────
   const msX = useMotionValue(0);
   const msY = useMotionValue(0);
   const msR = useMotionValue(0);
 
-  const sX = useSpring(msX, { stiffness: 260, damping: 26 });
-  const sY = useSpring(msY, { stiffness: 260, damping: 26 });
-  const sR = useSpring(msR, { stiffness: 260, damping: 26 });
+  const springX = useSpring(msX, { stiffness: 260, damping: 26 });
+  const springY = useSpring(msY, { stiffness: 260, damping: 26 });
+  const springR = useSpring(msR, { stiffness: 260, damping: 26 });
 
-  // The overlay gradient reacts to spring values every frame
-  const overlayBg = useTransform([sX, sY, sR], ([cx, cy, r]: number[]) => {
-    if (r < 3) return 'rgba(10,10,15,0.96)';
-    const inner = Math.max(0, r - 6);
-    return `radial-gradient(circle ${r}px at ${cx}px ${cy}px, transparent 0%, transparent ${inner}px, rgba(10,10,15,0.94) ${r + 22}px)`;
-  });
+  // Radial gradient that cuts out a circle around the spotlighted element
+  const overlayBg = useTransform(
+    [springX, springY, springR],
+    ([cx, cy, r]: number[]) => {
+      if (r < 3) return 'rgba(10,10,15,0.96)';
+      const inner = Math.max(0, r - 6);
+      return `radial-gradient(circle ${r}px at ${cx}px ${cy}px, transparent 0%, transparent ${inner}px, rgba(10,10,15,0.94) ${r + 22}px)`;
+    },
+  );
 
-  // ── Spotlight ring animated position ──────────────────────
-  const ringX = useSpring(msX, { stiffness: 260, damping: 26 });
-  const ringY = useSpring(msY, { stiffness: 260, damping: 26 });
-  const ringR = useSpring(msR, { stiffness: 260, damping: 26 });
+  const ringLeft = useTransform(
+    springX,
+    (x) => x - (spotRect ? spotRect.width / 2 + 14 : 40),
+  );
+  const ringTop = useTransform(
+    springY,
+    (y) => y - (spotRect ? spotRect.height / 2 + 14 : 40),
+  );
+  const ringW = useTransform(springR, (r) => r * 2 - 4);
+  const ringH = useTransform(springR, (r) => r * 2 - 4);
 
-  const ringLeft = useTransform(ringX, (x) => x - (spotRect ? spotRect.width / 2 + 14 : 40));
-  const ringTop  = useTransform(ringY, (y) => y - (spotRect ? spotRect.height / 2 + 14 : 40));
-  const ringW    = useTransform(ringR, (r) => r * 2 - 4);
-  const ringH    = useTransform(ringR, (r) => r * 2 - 4);
-
-  // ── Find and track spotlight target ───────────────────────
+  // ── Measure & track spotlight target ─────────────────────
   const updateRect = useCallback(() => {
     if (current.type !== 'spotlight' || !current.target) {
       setSpotRect(null);
@@ -239,25 +311,17 @@ export default function TutorialOverlay({ onComplete }: Props) {
     if (!el) return;
     const rect = el.getBoundingClientRect();
     setSpotRect(rect);
-    const cx = rect.left + rect.width / 2;
-    const cy = rect.top + rect.height / 2;
-    const r  = Math.max(rect.width, rect.height) / 2 + 28;
-    msX.set(cx);
-    msY.set(cy);
-    msR.set(r);
+    msX.set(rect.left + rect.width / 2);
+    msY.set(rect.top + rect.height / 2);
+    msR.set(Math.max(rect.width, rect.height) / 2 + 28);
   }, [current, msX, msY, msR]);
 
   useEffect(() => {
-    // Small delay so layout is settled after step change
     const t = setTimeout(updateRect, 60);
     window.addEventListener('resize', updateRect);
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener('resize', updateRect);
-    };
+    return () => { clearTimeout(t); window.removeEventListener('resize', updateRect); };
   }, [updateRect]);
 
-  // Reset to fullscreen look between steps
   useEffect(() => {
     if (current.type === 'fullscreen') msR.set(0);
   }, [step, current.type, msR]);
@@ -266,6 +330,7 @@ export default function TutorialOverlay({ onComplete }: Props) {
 
   // ── Navigation ─────────────────────────────────────────────
   const goNext = () => {
+    if (!audioReady) return;
     if (isLast) { onComplete(); return; }
     setDir(1);
     setStep((s) => s + 1);
@@ -279,18 +344,30 @@ export default function TutorialOverlay({ onComplete }: Props) {
 
   if (!mounted) return null;
 
-  // ── Card position for spotlight steps ─────────────────────
-  const cardBottomFromViewport = spotRect && current.cardPlacement === 'above'
-    ? window.innerHeight - spotRect.top + 20
-    : undefined;
-  const cardTopFromViewport = spotRect && current.cardPlacement === 'below'
-    ? spotRect.bottom + 20
-    : undefined;
+  const cardBottomFromViewport =
+    spotRect && current.cardPlacement === 'above'
+      ? window.innerHeight - spotRect.top + 20
+      : undefined;
+  const cardTopFromViewport =
+    spotRect && current.cardPlacement === 'below'
+      ? spotRect.bottom + 20
+      : undefined;
+
+  const sharedProps = {
+    step: current,
+    isFirst,
+    isLast,
+    onNext: goNext,
+    onPrev: goPrev,
+    audioReady,
+    countdown,
+    progress,
+  };
 
   // ── Render ─────────────────────────────────────────────────
   return createPortal(
     <>
-      {/* ── Dark/spotlight overlay ── */}
+      {/* Dark / spotlight overlay */}
       <motion.div
         className="fixed inset-0 z-[9990] pointer-events-auto"
         style={{ background: overlayBg }}
@@ -300,7 +377,7 @@ export default function TutorialOverlay({ onComplete }: Props) {
         transition={{ duration: 0.35 }}
       />
 
-      {/* ── Backdrop blur layer (fullscreen steps only) ── */}
+      {/* Blur layer — fullscreen steps only */}
       <AnimatePresence>
         {current.type === 'fullscreen' && (
           <motion.div
@@ -315,7 +392,7 @@ export default function TutorialOverlay({ onComplete }: Props) {
         )}
       </AnimatePresence>
 
-      {/* ── Spotlight ring ── */}
+      {/* Spotlight ring */}
       <AnimatePresence>
         {current.type === 'spotlight' && spotRect && (
           <motion.div
@@ -332,14 +409,13 @@ export default function TutorialOverlay({ onComplete }: Props) {
             initial={{ opacity: 0, scale: 1.3 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.4 }}
           />
         )}
       </AnimatePresence>
 
-      {/* ── UI chrome: progress dots + skip ── */}
+      {/* Progress dots + skip */}
       <div className="fixed inset-x-0 top-0 z-[9995] pointer-events-auto flex items-center justify-between px-4 pt-safe pt-4">
-        {/* Progress dots */}
         <motion.div
           className="flex gap-1.5 items-center"
           initial={{ opacity: 0, y: -8 }}
@@ -351,11 +427,8 @@ export default function TutorialOverlay({ onComplete }: Props) {
               key={i}
               animate={{
                 width: i === step ? 20 : 6,
-                backgroundColor: i === step
-                  ? current.accentColor
-                  : i < step
-                  ? '#4b5563'
-                  : '#1e293b',
+                backgroundColor:
+                  i === step ? current.accentColor : i < step ? '#4b5563' : '#1e293b',
               }}
               transition={{ duration: 0.3 }}
               className="h-1.5 rounded-full"
@@ -363,7 +436,6 @@ export default function TutorialOverlay({ onComplete }: Props) {
           ))}
         </motion.div>
 
-        {/* Skip */}
         <motion.button
           initial={{ opacity: 0, y: -8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -376,9 +448,8 @@ export default function TutorialOverlay({ onComplete }: Props) {
         </motion.button>
       </div>
 
-      {/* ── Info card ── */}
+      {/* Card */}
       {current.type === 'fullscreen' ? (
-        /* Fullscreen card — centered */
         <div className="fixed inset-0 z-[9996] flex items-center justify-center px-5 pointer-events-none">
           <AnimatePresence mode="wait" custom={dir}>
             <motion.div
@@ -391,19 +462,14 @@ export default function TutorialOverlay({ onComplete }: Props) {
               className="w-full max-w-sm pointer-events-auto"
             >
               <FullscreenCard
-                step={current}
-                isFirst={isFirst}
-                isLast={isLast}
+                {...sharedProps}
                 profileName={profile?.name}
-                onNext={goNext}
-                onPrev={goPrev}
                 stepIndex={step}
               />
             </motion.div>
           </AnimatePresence>
         </div>
       ) : (
-        /* Spotlight card — positioned near target */
         <div
           className="fixed inset-x-0 z-[9996] flex justify-center px-4 pointer-events-none"
           style={{
@@ -422,25 +488,97 @@ export default function TutorialOverlay({ onComplete }: Props) {
               exit="exit"
               className="w-full max-w-sm pointer-events-auto"
             >
-              <SpotlightCard
-                step={current}
-                isFirst={isFirst}
-                isLast={isLast}
-                onNext={goNext}
-                onPrev={goPrev}
-              />
+              <SpotlightCard {...sharedProps} />
             </motion.div>
           </AnimatePresence>
         </div>
       )}
     </>,
-    document.body
+    document.body,
   );
 }
 
 // ============================================================
-// SUB-COMPONENTS
+// NEXT BUTTON — shared by both card types
 // ============================================================
+
+interface NextButtonProps {
+  onClick: () => void;
+  isLast: boolean;
+  audioReady: boolean;
+  countdown: number;
+  progress: number;
+  accentColor: string;
+  glowColor: string;
+}
+
+function NextButton({
+  onClick,
+  isLast,
+  audioReady,
+  countdown,
+  progress,
+  accentColor,
+  glowColor,
+}: NextButtonProps) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={!audioReady}
+      className="relative flex-1 overflow-hidden rounded-xl py-3 text-sm font-semibold text-white transition-all active:scale-[0.97] disabled:cursor-not-allowed"
+      style={{
+        background: `linear-gradient(135deg, ${accentColor}dd, ${accentColor}88)`,
+        boxShadow: audioReady ? `0 8px 24px ${glowColor}` : 'none',
+        opacity: audioReady ? 1 : 0.72,
+      }}
+    >
+      {/* Fill bar that grows left→right as audio plays */}
+      {!audioReady && (
+        <motion.div
+          className="absolute inset-0 origin-left pointer-events-none"
+          style={{ backgroundColor: `${accentColor}44` }}
+          animate={{ scaleX: progress }}
+          transition={{ duration: 0.08, ease: 'linear' }}
+        />
+      )}
+
+      {/* Label */}
+      <span className="relative flex items-center justify-center gap-2">
+        {!audioReady ? (
+          <>
+            <Volume2 size={14} className="animate-pulse" />
+            <span>{countdown}s</span>
+          </>
+        ) : isLast ? (
+          <>
+            <Rocket size={16} />
+            Começar a jornada
+          </>
+        ) : (
+          <>
+            Próximo
+            <ChevronRight size={16} />
+          </>
+        )}
+      </span>
+    </button>
+  );
+}
+
+// ============================================================
+// FULLSCREEN CARD
+// ============================================================
+
+interface CardCommonProps {
+  step: Step;
+  isFirst: boolean;
+  isLast: boolean;
+  onNext: () => void;
+  onPrev: () => void;
+  audioReady: boolean;
+  countdown: number;
+  progress: number;
+}
 
 function FullscreenCard({
   step,
@@ -450,23 +588,16 @@ function FullscreenCard({
   onNext,
   onPrev,
   stepIndex,
-}: {
-  step: Step;
-  isFirst: boolean;
-  isLast: boolean;
-  profileName?: string;
-  onNext: () => void;
-  onPrev: () => void;
-  stepIndex: number;
-}) {
+  audioReady,
+  countdown,
+  progress,
+}: CardCommonProps & { profileName?: string; stepIndex: number }) {
   const title =
-    stepIndex === 0 && profileName
-      ? `Bem-vindo, ${profileName}!`
-      : step.title;
+    stepIndex === 0 && profileName ? `Bem-vindo, ${profileName}!` : step.title;
 
   return (
     <div
-      className="rounded-2xl border border-border bg-bg-card/90 p-6 shadow-2xl text-center space-y-5"
+      className="rounded-2xl border border-border bg-bg-card/90 p-6 shadow-2xl text-center space-y-4"
       style={{ backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}
     >
       {/* Animated icon */}
@@ -480,7 +611,6 @@ function FullscreenCard({
           className={`relative mx-auto w-20 h-20 flex items-center justify-center rounded-2xl border ${step.iconBgClass}`}
           style={{ boxShadow: `0 0 36px ${step.glowColor}` }}
         >
-          {/* Orbiting dots */}
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
@@ -499,9 +629,17 @@ function FullscreenCard({
         </div>
       </motion.div>
 
-      <div className="space-y-2">
+      <div className="space-y-1.5">
         <h2 className="text-xl font-bold text-text-primary">{title}</h2>
         <p className="text-sm text-text-secondary leading-relaxed">{step.description}</p>
+      </div>
+
+      {/* Audio spectrum */}
+      <div
+        className="h-12 w-full rounded-xl overflow-hidden"
+        style={{ background: `${step.accentColor}0d` }}
+      >
+        <AudioSpectrum color={step.accentColor} mirror />
       </div>
 
       <div className="flex gap-3">
@@ -514,30 +652,23 @@ function FullscreenCard({
             Voltar
           </button>
         )}
-        <button
+        <NextButton
           onClick={onNext}
-          className="flex-1 flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
-          style={{
-            background: `linear-gradient(135deg, ${step.accentColor}dd, ${step.accentColor}99)`,
-            boxShadow: `0 8px 24px ${step.glowColor}`,
-          }}
-        >
-          {isLast ? (
-            <>
-              <Rocket size={16} />
-              Começar a jornada
-            </>
-          ) : (
-            <>
-              Próximo
-              <ChevronRight size={16} />
-            </>
-          )}
-        </button>
+          isLast={isLast}
+          audioReady={audioReady}
+          countdown={countdown}
+          progress={progress}
+          accentColor={step.accentColor}
+          glowColor={step.glowColor}
+        />
       </div>
     </div>
   );
 }
+
+// ============================================================
+// SPOTLIGHT CARD
+// ============================================================
 
 function SpotlightCard({
   step,
@@ -545,13 +676,10 @@ function SpotlightCard({
   isLast,
   onNext,
   onPrev,
-}: {
-  step: Step;
-  isFirst: boolean;
-  isLast: boolean;
-  onNext: () => void;
-  onPrev: () => void;
-}) {
+  audioReady,
+  countdown,
+  progress,
+}: CardCommonProps) {
   return (
     <div
       className="rounded-2xl border border-border bg-bg-card/95 p-5 shadow-2xl"
@@ -562,7 +690,7 @@ function SpotlightCard({
         boxShadow: `0 8px 40px rgba(0,0,0,0.5), 0 0 0 1px ${step.accentColor}18`,
       }}
     >
-      {/* Header row */}
+      {/* Header */}
       <div className="flex items-center gap-3 mb-3">
         <div
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${step.iconBgClass}`}
@@ -579,15 +707,16 @@ function SpotlightCard({
         </div>
       </div>
 
-      <p className="text-sm text-text-secondary leading-relaxed mb-4">{step.description}</p>
+      <p className="text-sm text-text-secondary leading-relaxed mb-3">
+        {step.description}
+      </p>
 
-      {/* Tip indicator */}
-      <div className="flex items-center gap-1.5 mb-4">
-        <div className="h-px flex-1" style={{ backgroundColor: `${step.accentColor}30` }} />
-        <span className="text-[10px] font-medium" style={{ color: step.accentColor }}>
-          TOQUE PARA EXPLORAR
-        </span>
-        <div className="h-px flex-1" style={{ backgroundColor: `${step.accentColor}30` }} />
+      {/* Audio spectrum */}
+      <div
+        className="h-9 w-full rounded-lg overflow-hidden mb-3"
+        style={{ background: `${step.accentColor}0d` }}
+      >
+        <AudioSpectrum color={step.accentColor} mirror />
       </div>
 
       {/* Navigation */}
@@ -601,17 +730,15 @@ function SpotlightCard({
             Voltar
           </button>
         )}
-        <button
+        <NextButton
           onClick={onNext}
-          className="flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 active:scale-[0.97]"
-          style={{
-            background: `linear-gradient(135deg, ${step.accentColor}ee, ${step.accentColor}88)`,
-            boxShadow: `0 4px 16px ${step.glowColor}`,
-          }}
-        >
-          {isLast ? 'Concluir' : 'Próximo'}
-          <ChevronRight size={14} />
-        </button>
+          isLast={isLast}
+          audioReady={audioReady}
+          countdown={countdown}
+          progress={progress}
+          accentColor={step.accentColor}
+          glowColor={step.glowColor}
+        />
       </div>
     </div>
   );

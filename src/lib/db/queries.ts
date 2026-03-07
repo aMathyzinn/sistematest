@@ -266,7 +266,10 @@ export async function getUserByToken(token: string): Promise<UserAccount | null>
     .select('*')
     .eq('token', token.trim())
     .maybeSingle();
-  if (error || !data) return null;
+  // Throw on real DB/network errors so callers can show an error message
+  // instead of silently treating every failure as "user not found".
+  if (error) throw error;
+  if (!data) return null;
   return toUserAccount(data as Record<string, unknown>);
 }
 

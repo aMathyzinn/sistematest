@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUserStore } from '@/stores/userStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useUIStore } from '@/stores/uiStore';
 import { getUserByToken, createUser, seedDefaultChannels, updateUserApiKey } from '@/lib/db/queries';
 import { KeyRound, User, Target, AlertTriangle, Sparkles, LogIn, Key, Eye, EyeOff, ExternalLink } from 'lucide-react';
 import { queueOrPlayVoice, playVoiceBemVindo, playVoiceApiKey } from '@/lib/audio';
@@ -55,7 +56,8 @@ export default function OnboardingPage() {
   const [error, setError] = useState('');
 
   const { login, userId } = useUserStore();
-  const { setApiKey } = useSettingsStore();
+  const { setApiKey, initAll: initSettings } = useSettingsStore();
+  const { init: initUI } = useUIStore();
   const router = useRouter();
 
   // Queue afternoon greeting — will fire on first button click (autoplay policy)
@@ -75,12 +77,13 @@ export default function OnboardingPage() {
     try {
       const existing = await getUserByToken(token.trim());
       if (existing) {
-        // Usuário encontrado — logar direto
+        // Usuário encontrado — inicializa todas as stores e loga direto
         login(existing.id, existing.token, existing.profile, existing.levelData);
-        if (existing.apiKey) setApiKey(existing.apiKey);
+        initSettings(existing.apiKey, existing.settings);
+        initUI(existing.uiSettings);
         router.replace('/dashboard');
       } else {
-        // Token novo — criar conta
+        // Token não encontrado — criar conta nova
         setIsNewUser(true);
         setStep(1);
       }

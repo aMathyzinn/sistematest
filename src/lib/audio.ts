@@ -92,8 +92,17 @@ async function loadAudioBuffer(ctx: AudioContext, src: string): Promise<AudioBuf
 }
 
 /**
- * Play a narrated voice MP3 with a light echo effect.
- * Uses the shared AudioContext — no gesture race condition.
+ * Play a narrated voice MP3 with a consistent echo effect.
+ *
+ * Signal path (single path — no doubling):
+ *   source ──► dryGain ──┐
+ *   source ──► echo1    ──► compressor ──► analyser ──► destination
+ *   source ──► echo2    ──┘
+ *   source ──► echo3    ──┘
+ *
+ * DynamicsCompressor acts as a limiter so every file (regardless of its
+ * recording level or baked-in reverb) hits the echo mix at the same perceived
+ * loudness, making the echo sound identical across all mp3s.
  */
 export async function playVoiceFile(src: string): Promise<void> {
   const { useSettingsStore } = await import('@/stores/settingsStore');
@@ -110,25 +119,49 @@ export async function playVoiceFile(src: string): Promise<void> {
     const source = ctx.createBufferSource();
     source.buffer = buffer;
 
+    // ── Master compressor / limiter ──────────────────────────────────────
+    // Normalises loudness differences between files so the echo
+    // mix is proportionally equal regardless of source recording level.
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = -10;
+    compressor.knee.value      = 4;
+    compressor.ratio.value     = 8;
+    compressor.attack.value    = 0.003;
+    compressor.release.value   = 0.18;
+
+    // Route through the shared analyser (already wired to destination in getCtx).
+    // This is the SINGLE path to the speakers — avoids the doubling/phase issue
+    // that occurred when source was also connected directly to the analyser.
+    if (_analyser) {
+      compressor.connect(_analyser);
+    } else {
+      compressor.connect(ctx.destination);
+    }
+
+    // ── Dry signal ───────────────────────────────────────────────────────
     const dryGain = ctx.createGain();
-    dryGain.gain.value = 0.92;
+    dryGain.gain.value = 0.85;
+    dryGain.connect(compressor);
 
-    // Eco leve — apenas 2 reflexos bem discretos
-    const delay1 = ctx.createDelay(1);
-    delay1.delayTime.value = 0.18;
-    const echoGain1 = ctx.createGain();
-    echoGain1.gain.value = 0.04;
+    // ── Three evenly-spaced echo taps ────────────────────────────────────
+    const makeEcho = (delayTime: number, gain: number) => {
+      const d = ctx.createDelay(2);
+      d.delayTime.value = delayTime;
+      const g = ctx.createGain();
+      g.gain.value = gain;
+      d.connect(g);
+      g.connect(compressor);
+      return d;
+    };
 
-    const delay2 = ctx.createDelay(1);
-    delay2.delayTime.value = 0.36;
-    const echoGain2 = ctx.createGain();
-    echoGain2.gain.value = 0.012;
+    const echo1 = makeEcho(0.20, 0.18);
+    const echo2 = makeEcho(0.40, 0.055);
+    const echo3 = makeEcho(0.60, 0.018);
 
-    source.connect(dryGain);  dryGain.connect(ctx.destination);
-    source.connect(delay1);   delay1.connect(echoGain1);  echoGain1.connect(ctx.destination);
-    source.connect(delay2);   delay2.connect(echoGain2);  echoGain2.connect(ctx.destination);
-    // Also feed into the analyser so visualisers can read it
-    if (_analyser) source.connect(_analyser);
+    source.connect(dryGain);
+    source.connect(echo1);
+    source.connect(echo2);
+    source.connect(echo3);
 
     await new Promise<void>((resolve) => {
       source.onended = () => resolve();

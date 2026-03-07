@@ -2,31 +2,20 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUserStore } from '@/stores/userStore';
+import { getSessionCookie } from '@/lib/db/queries';
 import { Sparkles } from 'lucide-react';
 
 export default function Home() {
   const router = useRouter();
-  const { hasCompletedOnboarding } = useUserStore();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
-
-    const timer = setTimeout(() => {
-      if (hasCompletedOnboarding) {
-        router.replace('/dashboard');
-      } else {
-        router.replace('/onboarding');
-      }
-    }, 1500);
-
-    return () => clearTimeout(timer);
-  }, [mounted, hasCompletedOnboarding, router]);
+    // Read the session cookie synchronously — no network call, no race condition.
+    // If a valid session exists go to dashboard, otherwise go to onboarding.
+    const session = getSessionCookie();
+    router.replace(session ? '/dashboard' : '/onboarding');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-bg-primary">

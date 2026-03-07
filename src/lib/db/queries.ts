@@ -285,42 +285,34 @@ export async function createUser(
     attributes: { discipline: 1, focus: 1, consistency: 1, strength: 1, knowledge: 1 },
   };
 
-  const baseRecord = {
-    token: token.trim(),
-    name: name.trim(),
-    profession: profession.trim(),
-    objectives,
-    difficulties,
-    interests: [],
-    level_data: defaultLevel,
-    api_key: '',
-  };
-
-  // First try with new columns (post-migration schema)
   const { data, error } = await supabase
     .from('users')
-    .insert({ ...baseRecord, settings: DEFAULT_SETTINGS, ui_settings: DEFAULT_UI_SETTINGS })
+    .insert({
+      token: token.trim(),
+      name: name.trim(),
+      profession: profession.trim(),
+      objectives,
+      difficulties,
+      interests: [],
+      level_data: defaultLevel,
+      api_key: '',
+      settings: DEFAULT_SETTINGS,
+      ui_settings: DEFAULT_UI_SETTINGS,
+    })
     .select()
     .single();
 
   if (!error) return toUserAccount(data as Record<string, unknown>);
 
-  // Unique constraint violation — token already in use. Throw immediately so the
-  // caller can show a meaningful message (do NOT fall through to the column fallback).
+  // Token already exists (duplicate registration) — return the existing account.
   const pgCode = (error as { code?: string }).code;
-  if (pgCode === '23505') throw error;
-
-  // If the error is about missing columns, fall back to the pre-migration schema.
-  // The toUserAccount mapper will fill in default values from DEFAULT_SETTINGS/DEFAULT_UI_SETTINGS.
-  const errMsg = (error as { message?: string }).message || '';
-  if (errMsg.includes('settings') || errMsg.includes('ui_settings') || errMsg.includes('column') || (error as { code?: string }).code === 'PGRST204') {
-    const { data: d2, error: e2 } = await supabase
+  if (pgCode === '23505') {
+    const { data: existing, error: fetchErr } = await supabase
       .from('users')
-      .insert(baseRecord)
-      .select()
+      .select('*')
+      .eq('token', token.trim())
       .single();
-    if (e2) throw e2;
-    return toUserAccount(d2 as Record<string, unknown>);
+    if (!fetchErr && existing) return toUserAccount(existing as Record<string, unknown>);
   }
 
   throw error;

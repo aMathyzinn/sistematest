@@ -97,40 +97,12 @@ export default function OnboardingPage() {
     try {
       const account = await createUser(token, name, profession, selectedObjectives, selectedDifficulties);
       login(account.id, account.token, account.profile, account.levelData);
-      await seedDefaultChannels();
-      // Go to API key step, then play voices in sequence
+      await seedDefaultChannels().catch(() => {});
       setStep(4);
       playVoiceBemVindo().then(() => playVoiceApiKey());
     } catch (e: unknown) {
-      const pgErr = e as { code?: string; message?: string; status?: number; details?: string };
-      const code = pgErr.code ?? '';
-      const status = pgErr.status ?? 0;
-      const msg: string =
-        pgErr.message ||
-        (e instanceof Error ? e.message : '') ||
-        pgErr.details ||
-        JSON.stringify(e);
-      const isDuplicate = code === '23505' || status === 409 || msg.includes('duplicate') || msg.includes('unique') || msg.includes('already exists');
-      if (isDuplicate) {
-        // Token already exists (likely from a previous partial registration).
-        // Recover by logging in with the existing account instead of bouncing back.
-        try {
-          const existing = await getUserByToken(token.trim());
-          if (existing) {
-            login(existing.id, existing.token, existing.profile, existing.levelData);
-            if (existing.apiKey) setApiKey(existing.apiKey);
-            await seedDefaultChannels().catch(() => {});
-            setStep(4);
-            playVoiceBemVindo().then(() => playVoiceApiKey());
-            return;
-          }
-        } catch { /* recovery failed — fall through */ }
-        setError('Este token já está em uso. Tente outro.');
-        setStep(0);
-        setIsNewUser(false);
-      } else {
-        setError(`Erro ao criar conta: ${msg}`);
-      }
+      const msg = (e as { message?: string }).message || JSON.stringify(e);
+      setError(`Erro ao criar conta: ${msg}`);
     } finally {
       setLoading(false);
     }

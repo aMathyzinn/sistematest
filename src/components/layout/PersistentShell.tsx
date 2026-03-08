@@ -13,9 +13,15 @@ import { useUIStore } from '@/stores/uiStore';
  * page navigations. This prevents the header/nav/SoundProvider from being
  * torn down and rebuilt every time the user switches tabs.
  *
+ * CRITICAL: {children} must always be rendered at the same structural
+ * position in the JSX tree. If {children} moves between different container
+ * elements when state changes (hideAppShell, isSettings), React treats them
+ * as different component instances and unmounts/remounts the page — resetting
+ * all local state (e.g. activeChannel in chat page).
+ *
  * Visibility rules:
- *  - /onboarding, /  → no shell at all (public pages)
- *  - /settings       → header hidden, nav hidden (page has its own back-button header)
+ *  - /onboarding, /  → public pages, minimal wrapper (different routes anyway)
+ *  - /settings       → header + nav hidden; page has its own back-button header
  *  - hideAppShell=true (set by chat page when a channel is open) → shell hidden
  *  - everything else → full shell
  */
@@ -26,45 +32,26 @@ export default function PersistentShell({ children }: { children: React.ReactNod
   const isPublic = pathname === '/' || pathname?.startsWith('/onboarding');
   const isSettings = pathname?.startsWith('/settings');
 
-  // Full-screen takeover (chat channel view)
-  if (hideAppShell) {
-    return (
-      <SoundProvider>
-        <div className="min-h-dvh bg-bg-primary">{children}</div>
-      </SoundProvider>
-    );
-  }
-
-  // Public pages with no shell
+  // Public pages are different routes entirely — remounting is fine here
   if (isPublic) {
     return <SoundProvider>{children}</SoundProvider>;
   }
 
-  // Settings: shell hidden, no nav, no app header
-  // The settings page renders its own back-button header inside its content
-  if (isSettings) {
-    return (
-      <SoundProvider>
-        <div className="min-h-dvh bg-bg-primary">
-          <main className="mx-auto max-w-lg">
-            {children}
-          </main>
-        </div>
-      </SoundProvider>
-    );
-  }
+  // For all authenticated pages, always render {children} inside the same
+  // <main> element so React never remounts the page on shell state changes.
+  const showHeader = !isSettings && !hideAppShell;
+  const showNav = !isSettings && !hideAppShell;
 
-  // Normal app pages — full persistent shell
   return (
     <SoundProvider>
       <div className="min-h-dvh bg-bg-primary">
-        <Header />
-        <main className="mx-auto max-w-lg pb-safe">
+        {showHeader && <Header />}
+        <main className={showNav ? 'mx-auto max-w-lg pb-safe' : 'min-h-dvh'}>
           {children}
         </main>
-        <BottomNav />
-        <FloatingPomodoroTimer />
-        <AIAssistantFAB />
+        {showNav && <BottomNav />}
+        {showNav && <FloatingPomodoroTimer />}
+        {showNav && <AIAssistantFAB />}
       </div>
     </SoundProvider>
   );

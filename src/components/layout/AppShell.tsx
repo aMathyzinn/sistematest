@@ -4,6 +4,7 @@ import Header from './Header';
 import BottomNav from './BottomNav';
 import SoundProvider from '@/components/SoundProvider';
 import AIAssistantFAB from '@/components/ui/AIAssistantFAB';
+import FloatingPomodoroTimer from '@/components/pomodoro/FloatingPomodoroTimer';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -20,6 +21,7 @@ export default function AppShell({ children, showHeader = true, showNav = true }
           {children}
         </main>
         {showNav && <BottomNav />}
+        {showNav && <FloatingPomodoroTimer />}
         {showNav && <AIAssistantFAB />}
       </div>
     </SoundProvider>

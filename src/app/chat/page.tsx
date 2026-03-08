@@ -66,9 +66,6 @@ export default function ChatPage() {
       );
       setChannels(sorted);
       setLoading(false);
-      if (!activeChannel && sorted.length > 0) {
-        setActiveChannel(sorted[0]);
-      }
     } catch (e) {
       // Session not ready yet (SessionProvider fires after children effects).
       // Retry up to 10 times with increasing delay.

@@ -34,25 +34,34 @@ export default function TaskItem({ task, onUpdate }: TaskItemProps) {
 
   const handleComplete = async () => {
     if (isCompleted) return;
-    await db.updateTask(task.id, {
-      status: 'completed',
-      completedAt: new Date().toISOString(),
-    });
-    addXP(task.xpReward, 'focus');
+    try {
+      await db.updateTask(task.id, {
+        status: 'completed',
+        completedAt: new Date().toISOString(),
+      });
+      addXP(task.xpReward, 'focus');
 
-    const today = new Date().toISOString().split('T')[0];
-    const log = await db.getDailyLog(today);
-    await db.upsertDailyLog(today, {
-      tasksCompleted: (log?.tasksCompleted || 0) + 1,
-      xpEarned: (log?.xpEarned || 0) + task.xpReward,
-    });
+      const today = new Date().toISOString().split('T')[0];
+      const log = await db.getDailyLog(today);
+      await db.upsertDailyLog(today, {
+        tasksCompleted: (log?.tasksCompleted || 0) + 1,
+        xpEarned: (log?.xpEarned || 0) + task.xpReward,
+      });
 
-    onUpdate?.();
+      onUpdate?.();
+    } catch {
+      // DB write failed — reload to show the actual state
+      onUpdate?.();
+    }
   };
 
   const handleDelete = async () => {
-    await db.deleteTask(task.id);
-    onUpdate?.();
+    try {
+      await db.deleteTask(task.id);
+      onUpdate?.();
+    } catch {
+      onUpdate?.();
+    }
   };
 
   return (
@@ -97,6 +106,7 @@ export default function TaskItem({ task, onUpdate }: TaskItemProps) {
         {!isCompleted && (
           <button
             onClick={handleDelete}
+            data-sound="delete"
             className="p-1 text-text-dim hover:text-accent-red transition-colors"
           >
             <Trash2 size={14} />

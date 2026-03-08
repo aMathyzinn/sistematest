@@ -239,6 +239,7 @@ export default function TutorialOverlay({ onComplete }: Props) {
     setAudioDuration(0);
 
     const gen = ++audioGenRef.current;
+    let stopFn: (() => void) | null = null;
 
     playVoiceFileTracked(current.audioSrc).then((result) => {
       if (audioGenRef.current !== gen) return;
@@ -249,7 +250,8 @@ export default function TutorialOverlay({ onComplete }: Props) {
         return;
       }
 
-      const { duration, done } = result;
+      const { duration, done, stop } = result;
+      stopFn = stop;
       setAudioDuration(duration);
 
       const startTs = Date.now();
@@ -266,8 +268,11 @@ export default function TutorialOverlay({ onComplete }: Props) {
       });
     });
 
-    // Invalidate the gen counter when step changes or component unmounts
-    return () => { audioGenRef.current++; };
+    // Invalidate the gen counter and stop current audio when step changes or unmounts
+    return () => {
+      audioGenRef.current++;
+      stopFn?.();
+    };
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Spring-animated spotlight ─────────────────────────────

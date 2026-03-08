@@ -78,9 +78,12 @@ export default function PomodoroTimer({ compact = false }: { compact?: boolean }
           timer.setPhase('break', pomodoro.breakDuration * 60);
         }
 
-        // Registrar sessão
+        // Registrar sessão — use the real start time from the store
+        const actualStartedAt = timer.startedAt
+          ? new Date(timer.startedAt).toISOString()
+          : new Date(Date.now() - pomodoro.focusDuration * 60000).toISOString();
         await db.addPomodoroSession({
-          startedAt: new Date(Date.now() - pomodoro.focusDuration * 60000).toISOString(),
+          startedAt: actualStartedAt,
           completedAt: new Date().toISOString(),
           duration: pomodoro.focusDuration,
           type: 'focus',

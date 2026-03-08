@@ -179,6 +179,8 @@ export async function playVoiceFile(src: string): Promise<void> {
   try {
     if (ctx.state === 'suspended') await ctx.resume();
     const buffer = await loadAudioBuffer(ctx, src);
+    // Re-check after async ops — tutorial may have mounted during fetch/decode
+    if (_tutorialActive) return;
     const source = ctx.createBufferSource();
     source.buffer = buffer;
     wireVoiceChain(ctx, source);
@@ -199,7 +201,7 @@ export async function playVoiceFile(src: string): Promise<void> {
  */
 export async function playVoiceFileTracked(
   src: string,
-): Promise<{ duration: number; done: Promise<void> } | null> {
+): Promise<{ duration: number; done: Promise<void>; stop: () => void } | null> {
   const { useSettingsStore } = await import('@/stores/settingsStore');
   if (!useSettingsStore.getState().soundEnabled) return null;
 
@@ -222,7 +224,8 @@ export async function playVoiceFileTracked(
     source.onended = () => resolveEnded();
     source.start(ctx.currentTime);
 
-    return { duration, done };
+    const stop = () => { try { source.stop(); } catch { /* already ended */ } };
+    return { duration, done, stop };
   } catch (e) {
     console.warn('[voice tracked]', src, e);
     return null;

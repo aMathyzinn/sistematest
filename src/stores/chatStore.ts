@@ -124,9 +124,14 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
         onDone: async (fullText) => {
           set({ isStreaming: false, streamingText: '', streamingChannelId: null, _abort: null });
 
-          if (!fullText.trim()) return;
+          if (!fullText.trim()) {
+            set({ error: 'A IA não retornou resposta. Verifique sua chave de API e tente novamente.' });
+            return;
+          }
 
           const parsed: AIResponse = parseAIResponse(fullText);
+          // Ensure message is never empty so the bubble is always visible
+          const messageContent = parsed.message?.trim() || '✓';
 
           // Try to persist the assistant message. If it fails (e.g. session expired),
           // fall back to a local-only message so the user still sees the response.
@@ -135,15 +140,16 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
             assistantMessage = await db.addMessage({
               channelId,
               role: 'assistant',
-              content: parsed.message,
+              content: messageContent,
               actions: parsed.actions,
             });
-          } catch {
+          } catch (e) {
+            console.error('[chat] Falha ao salvar mensagem da IA no DB:', e);
             assistantMessage = {
               id: `local-${Date.now()}`,
               channelId,
               role: 'assistant',
-              content: parsed.message,
+              content: messageContent,
               actions: parsed.actions,
               createdAt: new Date().toISOString(),
             };
@@ -160,7 +166,9 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
             try {
               const results = await executeActions(parsed.actions);
               set({ actionResults: results });
-            } catch { /* ignore action errors */ }
+            } catch (e) {
+              console.error('[chat] Falha ao executar actions:', e);
+            }
           }
         },
         onError: (err) => {

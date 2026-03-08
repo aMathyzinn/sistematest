@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import AppShell from '@/components/layout/AppShell';
 import * as db from '@/lib/db/queries';
 import type { ExerciseLog, ExerciseSet, MuscleGroup } from '@/lib/types';
 import { Plus, Trash2, Dumbbell, ChevronDown, X, Check } from 'lucide-react';
@@ -104,8 +103,7 @@ export default function ExercisesPage() {
   const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
   return (
-    <AppShell>
-      <div className="px-4 py-4 space-y-4">
+    <div className="px-4 py-4 space-y-4">
         {/* Error banner */}
         {error && (
           <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2 text-sm text-red-400 flex items-center justify-between">
@@ -283,7 +281,6 @@ export default function ExercisesPage() {
           </div>
         )}
       </div>
-    </AppShell>
   );
 }
 

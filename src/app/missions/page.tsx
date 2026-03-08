@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import AppShell from '@/components/layout/AppShell';
 import MissionCard from '@/components/missions/MissionCard';
 import XPBar from '@/components/missions/XPBar';
 import type { Mission, MissionType } from '@/lib/types';
@@ -43,8 +42,7 @@ export default function MissionsPage() {
   const completed = missions.filter((m) => m.status === 'completed').length;
 
   return (
-    <AppShell>
-      <div className="px-4 py-4 space-y-4">
+    <div className="px-4 py-4 space-y-4">
         <XPBar />
 
         <div className="flex items-center justify-between">
@@ -90,7 +88,6 @@ export default function MissionsPage() {
             </div>
           )}
         </div>
-      </div>
-    </AppShell>
+    </div>
   );
 }

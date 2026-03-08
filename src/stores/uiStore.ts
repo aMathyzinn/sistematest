@@ -11,10 +11,13 @@ interface UIState {
   sections: UISection[];
   theme: 'dark' | 'light';
   sidebarOpen: boolean;
+  /** Set true by pages that take over the full screen (e.g. chat channel view) */
+  hideAppShell: boolean;
 
   // Actions
   init: (uiSettings: UserUISettings) => void;
   setView: (view: AppView) => void;
+  setHideAppShell: (hide: boolean) => void;
   setSections: (sections: UISection[]) => void;
   addSection: (section: UISection) => void;
   removeSection: (id: string) => void;
@@ -41,6 +44,7 @@ export const useUIStore = create<UIState>()((set, get) => ({
   sections: [...defaultSections],
   theme: 'dark',
   sidebarOpen: false,
+  hideAppShell: false,
 
   init: (uiSettings) => set({
     theme: uiSettings.theme,
@@ -48,6 +52,7 @@ export const useUIStore = create<UIState>()((set, get) => ({
   }),
 
   setView: (view) => set({ currentView: view }),
+  setHideAppShell: (hide) => set({ hideAppShell: hide }),
 
   setSections: (sections) => {
     set({ sections });

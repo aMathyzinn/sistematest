@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import AppShell from '@/components/layout/AppShell';
+import { useUIStore } from '@/stores/uiStore';
 import ChatWindow from '@/components/chat/ChatWindow';
 import type { ChatChannel } from '@/lib/types';
 import * as db from '@/lib/db/queries';
@@ -44,6 +44,14 @@ export default function ChatPage() {
   const [newIcon, setNewIcon] = useState('💬');
   const [creating, setCreating] = useState(false);
   const [longPress, setLongPress] = useState<string | null>(null);
+
+  const { setHideAppShell } = useUIStore();
+
+  // Hide the persistent shell (header + nav) when a channel is open
+  useEffect(() => {
+    setHideAppShell(!!activeChannel);
+    return () => setHideAppShell(false);
+  }, [activeChannel, setHideAppShell]);
 
   useEffect(() => {
     loadChannels();
@@ -99,8 +107,7 @@ export default function ChatPage() {
   // Chat view
   if (activeChannel) {
     return (
-      <AppShell showHeader={false} showNav={false}>
-        <div className="flex h-[100dvh] flex-col">
+      <div className="flex h-[100dvh] flex-col">
           <div className="flex items-center gap-3 border-b border-border/60 bg-bg-secondary/95 backdrop-blur-lg px-4 py-3">
             <button
               onClick={() => setActiveChannel(null)}
@@ -122,13 +129,11 @@ export default function ChatPage() {
             <ChatWindow channelId={activeChannel.id} />
           </div>
         </div>
-      </AppShell>
     );
   }
 
   return (
-    <AppShell>
-      <div className="px-4 py-4 space-y-3">
+    <div className="px-4 py-4 space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-bold text-text-primary">Chats</h2>
           <button
@@ -246,8 +251,7 @@ export default function ChatPage() {
             </div>
           )}
         </div>
-      </div>
-    </AppShell>
+    </div>
   );
 }
 

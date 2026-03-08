@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useUserStore } from '@/stores/userStore';
 import { updateUserApiKey, updateUserToken, getUserByToken } from '@/lib/db/queries';
-import AppShell from '@/components/layout/AppShell';
 import { ArrowLeft, Key, Bot, Timer, Bell, Trash2, RotateCcw, RefreshCw, Volume2, LogOut } from 'lucide-react';
 import { playNotificationSound, playAlarmSound, playClick, playSuccess, playNavSwitch, playToggle, playDelete, playVoiceNotification } from '@/lib/audio';
 
@@ -75,8 +74,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <AppShell showNav={false}>
-      <div className="px-4 py-4 space-y-6">
+    <div className="px-4 py-4 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">
           <button
@@ -336,6 +334,5 @@ export default function SettingsPage() {
           </button>
         </section>
       </div>
-    </AppShell>
   );
 }

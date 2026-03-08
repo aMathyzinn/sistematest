@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import AppShell from '@/components/layout/AppShell';
 import * as db from '@/lib/db/queries';
 import type { Project, ProjectTask, ProjectStatus } from '@/lib/types';
 import { Plus, Trash2, FolderKanban, X, Check, ChevronDown, Circle, CheckCircle2 } from 'lucide-react';
@@ -102,8 +101,7 @@ export default function ProjectsPage() {
     : projects;
 
   return (
-    <AppShell>
-      <div className="px-4 py-4 space-y-4">
+    <div className="px-4 py-4 space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -238,7 +236,6 @@ export default function ProjectsPage() {
           ))}
         </div>
       </div>
-    </AppShell>
   );
 }
 

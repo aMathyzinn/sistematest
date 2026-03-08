@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import AppShell from '@/components/layout/AppShell';
 import RoutineBlockComponent from '@/components/routine/RoutineBlock';
 import AlarmCard from '@/components/routine/AlarmCard';
 import type { RoutineBlock, Alarm } from '@/lib/types';
@@ -50,8 +49,7 @@ export default function RoutinePage() {
   };
 
   return (
-    <AppShell>
-      <div className="px-4 py-4 space-y-4">
+    <div className="px-4 py-4 space-y-4">
         <h2 className="text-lg font-bold text-text-primary">Rotina & Alarmes</h2>
 
         {/* Tabs */}
@@ -166,6 +164,5 @@ export default function RoutinePage() {
           </div>
         )}
       </div>
-    </AppShell>
   );
 }

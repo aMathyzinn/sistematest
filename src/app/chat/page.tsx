@@ -36,6 +36,7 @@ function ChannelIcon({ icon, isSystem, size = 18 }: { icon: string; isSystem: bo
 
 export default function ChatPage() {
   const [channels, setChannels] = useState<ChatChannel[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeChannel, setActiveChannel] = useState<ChatChannel | null>(null);
   const [showNewChat, setShowNewChat] = useState(false);
   const [newName, setNewName] = useState('');
@@ -56,15 +57,18 @@ export default function ChatPage() {
         (b.lastMessageAt || b.createdAt).localeCompare(a.lastMessageAt || a.createdAt)
       );
       setChannels(sorted);
+      setLoading(false);
       if (!activeChannel && sorted.length > 0) {
         setActiveChannel(sorted[0]);
       }
     } catch (e) {
       // Session not ready yet (SessionProvider fires after children effects).
-      // Retry up to 8 times with increasing delay.
+      // Retry up to 10 times with increasing delay.
       const msg = (e as Error)?.message || '';
-      if (attempt < 8 && (msg.includes('autenticado') || msg.includes('authenticated'))) {
-        setTimeout(() => loadChannels(attempt + 1), 300 * (attempt + 1));
+      if (attempt < 10) {
+        setTimeout(() => loadChannels(attempt + 1), 250 * (attempt + 1));
+      } else {
+        setLoading(false); // give up — show real empty state
       }
     }
   };
@@ -227,7 +231,13 @@ export default function ChatPage() {
             </motion.div>
           ))}
 
-          {channels.length === 0 && (
+          {loading && channels.length === 0 && (
+            <div className="py-12 flex flex-col items-center gap-3">
+              <div className="h-10 w-10 animate-spin rounded-full border-2 border-border border-t-accent-purple" />
+              <p className="text-xs text-text-dim">Carregando chats...</p>
+            </div>
+          )}
+          {!loading && channels.length === 0 && (
             <div className="py-12 text-center">
               <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-accent-purple/10 border border-accent-purple/15">
                 <MessageSquare size={24} className="text-accent-purple-light" />

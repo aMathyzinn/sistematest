@@ -10,6 +10,28 @@ interface ChatWindowProps {
   channelId: string;
 }
 
+/**
+ * Extracts just the `message` value from a partially-streamed JSON blob.
+ * The AI always responds { "message": "...", "actions": [...] }.
+ * During streaming the JSON arrives character-by-character — without this,
+ * the user sees raw JSON like { "message": "Tarefas criadas", "actions": [{
+ */
+function extractStreamingMessage(raw: string): string {
+  if (!raw) return '';
+  // Try to pull the message value out of partial JSON
+  const match = raw.match(/"message"\s*:\s*"((?:[^"\\]|\\.)*)/);
+  if (match) {
+    return match[1]
+      .replace(/\\n/g, '\n')
+      .replace(/\\"/g, '"')
+      .replace(/\\t/g, '\t');
+  }
+  // JSON started but "message" key not yet reached — stay silent
+  if (raw.trim().startsWith('{')) return '';
+  // Plain-text fallback (non-JSON response)
+  return raw;
+}
+
 export default function ChatWindow({ channelId }: ChatWindowProps) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -25,6 +47,10 @@ export default function ChatWindow({ channelId }: ChatWindowProps) {
     sendMessage,
     cancelStream,
   } = useChat(channelId);
+
+  // Parse just the message text out of the partial JSON so we never show
+  // raw JSON to the user while the AI is still streaming its response.
+  const displayStreamingText = extractStreamingMessage(streamingText);
 
   // Auto-scroll
   useEffect(() => {
@@ -70,8 +96,8 @@ export default function ChatWindow({ channelId }: ChatWindowProps) {
           <ChatMessage key={msg.id} message={msg} />
         ))}
 
-        {/* Streaming text */}
-        {isStreaming && streamingText && (
+        {/* Streaming text — shows only the parsed message, not raw JSON */}
+        {isStreaming && displayStreamingText && (
           <motion.div
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
@@ -81,14 +107,14 @@ export default function ChatWindow({ channelId }: ChatWindowProps) {
               <Bot size={13} />
             </div>
             <div className="max-w-[78%] rounded-2xl rounded-bl-sm bg-bg-card border border-border/60 px-4 py-2.5 text-sm text-text-primary shadow-sm">
-              <p className="whitespace-pre-wrap leading-relaxed">{streamingText}</p>
+              <p className="whitespace-pre-wrap leading-relaxed">{displayStreamingText}</p>
               <span className="inline-block h-3.5 w-0.5 animate-pulse bg-accent-purple ml-0.5 align-middle" />
             </div>
           </motion.div>
         )}
 
-        {/* Loading dots */}
-        {isLoading && !streamingText && (
+        {/* Loading dots — shown while waiting OR while JSON preamble hasn't revealed message yet */}
+        {(isLoading || (isStreaming && !displayStreamingText)) && !displayStreamingText && (
           <div className="flex items-end gap-2.5">
             <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-bg-card to-bg-tertiary border border-border text-accent-purple-light">
               <Bot size={13} />

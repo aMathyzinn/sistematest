@@ -19,6 +19,24 @@ const PAGE_HINTS: Record<string, string> = {
   '/dashboard': 'Como estou evoluindo?',
 };
 
+/**
+ * Extract just the message value from partial streamed JSON.
+ * Identical to the one in ChatWindow.tsx — keeps the FAB from showing
+ * raw JSON like { "message": "Treino criado", "actions": [{
+ */
+function extractStreamingMessage(raw: string): string {
+  if (!raw) return '';
+  const match = raw.match(/"message"\s*:\s*"((?:[^"\\]|\\.)*)/);
+  if (match) {
+    return match[1]
+      .replace(/\\n/g, '\n')
+      .replace(/\\"/g, '"')
+      .replace(/\\t/g, '\t');
+  }
+  if (raw.trim().startsWith('{')) return '';
+  return raw;
+}
+
 export default function AIAssistantFAB() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -29,15 +47,24 @@ export default function AIAssistantFAB() {
 
   const {
     messagesByChannel,
-    isLoading,
-    isStreaming,
-    streamingText,
+    isLoading: globalLoading,
+    isStreaming: globalStreaming,
+    streamingText: globalStreamingText,
+    streamingChannelId,
     actionResults,
     error,
     sendMessage,
     loadMessages,
     cancelStream,
   } = useChatStore();
+
+  // Only show loading/streaming state when it's THIS channel being processed.
+  // Without this, the FAB shows infinite dots whenever any chat channel streams.
+  const isOurs = !!channelId && streamingChannelId === channelId;
+  const isStreaming = isOurs && globalStreaming;
+  const isLoading = isOurs && globalLoading;
+  const rawStreamingText = isOurs ? globalStreamingText : '';
+  const displayStreamingText = extractStreamingMessage(rawStreamingText);
 
   const hidden =
     !pathname ||
@@ -81,7 +108,7 @@ export default function AIAssistantFAB() {
     if (open) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [open, streamingText, messagesByChannel]);
+  }, [open, rawStreamingText, messagesByChannel]);
 
   if (hidden) return null;
 
@@ -191,16 +218,16 @@ export default function AIAssistantFAB() {
                 </div>
               ))}
 
-              {isStreaming && streamingText && (
+              {isStreaming && displayStreamingText && (
                 <div className="flex justify-start">
                   <div className="max-w-[82%] rounded-2xl rounded-bl-sm bg-bg-card border border-border px-3 py-2 text-sm text-text-primary">
-                    {streamingText}
+                    {displayStreamingText}
                     <span className="inline-block h-3.5 w-0.5 animate-pulse bg-accent-purple ml-0.5" />
                   </div>
                 </div>
               )}
 
-              {isLoading && !streamingText && (
+              {(isLoading || (isStreaming && !displayStreamingText)) && (
                 <div className="flex justify-start">
                   <div className="rounded-2xl rounded-bl-sm bg-bg-card border border-border px-3 py-2">
                     <div className="flex gap-1">

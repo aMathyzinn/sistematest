@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSettingsStore } from '@/stores/settingsStore';
 import { useUserStore } from '@/stores/userStore';
+import { usePomodoroStore } from '@/stores/pomodoroStore';
 import * as db from '@/lib/db/queries';
 import type { PomodoroState } from '@/lib/types';
 import { Play, Pause, RotateCcw, SkipForward, Coffee, Flame } from 'lucide-react';
@@ -11,76 +12,71 @@ import { motion } from 'framer-motion';
 export default function PomodoroTimer({ compact = false }: { compact?: boolean }) {
   const { pomodoro } = useSettingsStore();
   const { addXP } = useUserStore();
+  const timer = usePomodoroStore();
 
-  const [state, setState] = useState<PomodoroState>('idle');
-  const [timeLeft, setTimeLeft] = useState(pomodoro.focusDuration * 60);
-  const [isRunning, setIsRunning] = useState(false);
-  const [sessionsCompleted, setSessionsCompleted] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Re-render every 500 ms while running so the display stays accurate
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!timer.isRunning) return;
+    const id = setInterval(() => tick((n) => n + 1), 500);
+    return () => clearInterval(id);
+  }, [timer.isRunning]);
+
+  // Derive display values from timestamp-based store
+  const timeLeft = timer.getTimeLeft();
+  const { phase: state, isRunning, sessionsCompleted } = timer;
 
   const getDuration = useCallback(
     (s: PomodoroState) => {
       switch (s) {
-        case 'focus':
-          return pomodoro.focusDuration * 60;
-        case 'break':
-          return pomodoro.breakDuration * 60;
-        case 'long_break':
-          return pomodoro.longBreakDuration * 60;
-        default:
-          return pomodoro.focusDuration * 60;
+        case 'focus':      return pomodoro.focusDuration * 60;
+        case 'break':      return pomodoro.breakDuration * 60;
+        case 'long_break': return pomodoro.longBreakDuration * 60;
+        default:           return pomodoro.focusDuration * 60;
       }
     },
     [pomodoro]
   );
 
-  // Load today's sessions
+  // Load today's sessions on first mount
   useEffect(() => {
     db.getTodayPomodoroSessions().then((sessions) => {
-      setSessionsCompleted(sessions.filter(s => s.type === 'focus' && s.completedAt).length);
+      timer.setSessionsCompleted(sessions.filter(s => s.type === 'focus' && s.completedAt).length);
     }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Timer logic
+  // Keep idle display in sync with settings
   useEffect(() => {
-    if (isRunning && timeLeft > 0) {
-      intervalRef.current = setInterval(() => {
-        setTimeLeft((t) => t - 1);
-      }, 1000);
-    } else if (timeLeft === 0 && isRunning) {
+    timer.syncIdleDuration(pomodoro.focusDuration * 60);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pomodoro.focusDuration]);
+
+  // Guard against calling handleSessionEnd twice
+  const sessionEndFiredRef = useRef(false);
+
+  // Detect expiry
+  useEffect(() => {
+    if (timeLeft === 0 && isRunning && !sessionEndFiredRef.current) {
+      sessionEndFiredRef.current = true;
       handleSessionEnd().catch(() => {});
     }
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [isRunning, timeLeft]);
-
-  // Visibility change — keep timer accurate
-  useEffect(() => {
-    let hiddenAt: number | null = null;
-
-    const handleVisibility = () => {
-      if (document.hidden && isRunning) {
-        hiddenAt = Date.now();
-      } else if (!document.hidden && hiddenAt && isRunning) {
-        const elapsed = Math.floor((Date.now() - hiddenAt) / 1000);
-        setTimeLeft((t) => Math.max(0, t - elapsed));
-        hiddenAt = null;
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [isRunning]);
+    if (timeLeft > 0) sessionEndFiredRef.current = false;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft, isRunning]);
 
   const handleSessionEnd = async () => {
     try {
-      setIsRunning(false);
-
       if (state === 'focus') {
         const newCount = sessionsCompleted + 1;
-        setSessionsCompleted(newCount);
+        timer.setSessionsCompleted(newCount);
+
+        // Transition phase immediately so isRunning becomes false
+        if (newCount % pomodoro.sessionsUntilLongBreak === 0) {
+          timer.setPhase('long_break', pomodoro.longBreakDuration * 60);
+        } else {
+          timer.setPhase('break', pomodoro.breakDuration * 60);
+        }
 
         // Registrar sessão
         await db.addPomodoroSession({
@@ -101,15 +97,6 @@ export default function PomodoroTimer({ compact = false }: { compact?: boolean }
           xpEarned: (log?.xpEarned || 0) + 15,
         });
 
-        // Próximo: break ou long break
-        if (newCount % pomodoro.sessionsUntilLongBreak === 0) {
-          setState('long_break');
-          setTimeLeft(pomodoro.longBreakDuration * 60);
-        } else {
-          setState('break');
-          setTimeLeft(pomodoro.breakDuration * 60);
-        }
-
         // Notificação
         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
           new Notification('⚔️ Sessão concluída!', {
@@ -118,8 +105,7 @@ export default function PomodoroTimer({ compact = false }: { compact?: boolean }
         }
       } else {
         // Break terminou
-        setState('focus');
-        setTimeLeft(pomodoro.focusDuration * 60);
+        timer.setPhase('focus', pomodoro.focusDuration * 60);
       }
     } catch {
       // DB error — timer state already updated, just skip persistence
@@ -127,20 +113,19 @@ export default function PomodoroTimer({ compact = false }: { compact?: boolean }
   };
 
   const startTimer = () => {
-    if (state === 'idle') setState('focus');
-    setIsRunning(true);
+    if (state === 'idle') {
+      timer.startSession(pomodoro.focusDuration * 60);
+    } else {
+      timer.resume();
+    }
   };
 
-  const pauseTimer = () => setIsRunning(false);
+  const pauseTimer = () => timer.pause();
 
-  const resetTimer = () => {
-    setIsRunning(false);
-    setState('idle');
-    setTimeLeft(pomodoro.focusDuration * 60);
-  };
+  const resetTimer = () => timer.reset(pomodoro.focusDuration * 60);
 
   const skipPhase = () => {
-    setIsRunning(false);
+    timer.pause();
     handleSessionEnd();
   };
 

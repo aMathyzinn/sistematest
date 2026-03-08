@@ -769,13 +769,20 @@ export async function getTodayPomodoroSessions(): Promise<PomodoroSession[]> {
 // ============================================================
 
 export async function seedDefaultChannels(): Promise<void> {
-  const { count } = await supabase
+  const { count, error } = await supabase
     .from('chat_channels')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', getUserId());
 
-  if ((count || 0) === 0) {
-    const defaults = [
+  // If the count query fails, bail out — don't risk re-creating duplicate
+  // default channels. The user's existing channels are safe.
+  if (error) return;
+
+  // count can be null from Supabase even without an error; treat null as
+  // "unknown" and skip seeding rather than silently re-seeding.
+  if (count === null || count > 0) return;
+
+  const defaults = [
       { name: 'Sistema', icon: '🤖', description: 'Chat principal com o Sistema de Evolução', isSystem: true },
       { name: 'Geral', icon: '💬', description: 'Conversas gerais e dia a dia', isSystem: true },
       { name: 'Exercícios', icon: '💪', description: 'Treinos, físico e saúde', isSystem: true },
@@ -783,9 +790,8 @@ export async function seedDefaultChannels(): Promise<void> {
       { name: 'Finanças', icon: '💰', description: 'Vendas, finanças e metas financeiras', isSystem: true },
       { name: 'Estudos', icon: '📚', description: 'Aprendizado, cursos e conhecimento', isSystem: true },
     ];
-    for (const ch of defaults) {
-      await addChannel(ch);
-    }
+  for (const ch of defaults) {
+    await addChannel(ch);
   }
 }
 

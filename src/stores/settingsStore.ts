@@ -26,6 +26,41 @@ interface SettingsState {
   setHasSeenTutorial: (seen: boolean) => void;
 }
 
+// ============================================================
+// DISPLAY CACHE — localStorage fast-hydration for settings
+// apiKey especially critical: without it the AI chat fails on F5
+// until the DB round-trip completes.
+// ============================================================
+
+const SETTINGS_CACHE_KEY = 'sistema-settings-v1';
+
+type SettingsCache = {
+  apiKey: string;
+  aiModel: string;
+  pomodoro: PomodoroSettings;
+  soundEnabled: boolean;
+  notificationsEnabled: boolean;
+  language: string;
+  hasSeenTutorial: boolean;
+};
+
+function readSettingsCache(): SettingsCache | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(SETTINGS_CACHE_KEY);
+    return raw ? (JSON.parse(raw) as SettingsCache) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeSettingsCache(data: SettingsCache): void {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(data)); } catch { /* quota / private mode */ }
+}
+
+const _sCache = readSettingsCache();
+
 function buildSettings(s: SettingsState): UserSettings {
   return {
     aiModel: s.aiModel,
@@ -38,30 +73,38 @@ function buildSettings(s: SettingsState): UserSettings {
 }
 
 export const useSettingsStore = create<SettingsState>()((set, get) => ({
-  apiKey: '',
-  aiModel: 'openai/gpt-4o-mini',
-  pomodoro: {
+  apiKey: _sCache?.apiKey ?? '',
+  aiModel: _sCache?.aiModel ?? 'openai/gpt-4o-mini',
+  pomodoro: _sCache?.pomodoro ?? {
     focusDuration: 25,
     breakDuration: 5,
     longBreakDuration: 15,
     sessionsUntilLongBreak: 4,
   },
-  notificationsEnabled: false,
-  soundEnabled: true,
-  language: 'pt-BR',
-  hasSeenTutorial: false,
+  notificationsEnabled: _sCache?.notificationsEnabled ?? false,
+  soundEnabled: _sCache?.soundEnabled ?? true,
+  language: (_sCache?.language as 'pt-BR' | 'en') ?? 'pt-BR',
+  hasSeenTutorial: _sCache?.hasSeenTutorial ?? false,
 
-  initAll: (apiKey, settings) => set({
-    apiKey,
-    aiModel: settings.aiModel,
-    pomodoro: settings.pomodoro,
-    soundEnabled: settings.soundEnabled,
-    notificationsEnabled: settings.notificationsEnabled,
-    language: settings.language as 'pt-BR' | 'en',
-    hasSeenTutorial: settings.hasSeenTutorial ?? false,
-  }),
+  initAll: (apiKey, settings) => {
+    const newState = {
+      apiKey,
+      aiModel: settings.aiModel,
+      pomodoro: settings.pomodoro,
+      soundEnabled: settings.soundEnabled,
+      notificationsEnabled: settings.notificationsEnabled,
+      language: settings.language as 'pt-BR' | 'en',
+      hasSeenTutorial: settings.hasSeenTutorial ?? false,
+    };
+    set(newState);
+    // Keep the display cache up to date with authoritative DB values
+    writeSettingsCache(newState);
+  },
 
-  setApiKey: (key) => set({ apiKey: key }),
+  setApiKey: (key) => {
+    set({ apiKey: key });
+    writeSettingsCache({ ...get(), apiKey: key });
+  },
 
   setAiModel: (model) => {
     set({ aiModel: model });

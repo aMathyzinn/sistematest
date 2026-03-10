@@ -26,7 +26,8 @@ export function useChat(channelId: string) {
   const actionResults = isThisChannelStreaming || store.streamingChannelId === null ? store.actionResults : [];
 
   const sendMessage = useCallback(
-    (content: string) => store.sendMessage(channelId, content),
+    (content: string, voiceData?: { audioUrl: string; duration: number }) =>
+      store.sendMessage(channelId, content, voiceData),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [channelId]
   );

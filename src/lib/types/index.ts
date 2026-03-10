@@ -98,6 +98,8 @@ export interface ChatMessage {
   content: string;
   actions?: AIAction[];
   createdAt: string;
+  /** Voice message audio data (client-side only, not persisted to DB) */
+  voiceData?: { audioUrl: string; duration: number };
 }
 
 // ---- Rotina ----

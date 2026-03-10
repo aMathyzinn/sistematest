@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useChat } from '@/hooks/useChat';
 import ChatMessage from './ChatMessage';
-import { Send, Square, Loader2, AlertCircle, CheckCircle2, Bot, Sparkles } from 'lucide-react';
+import { Send, Square, Loader2, AlertCircle, CheckCircle2, Bot, Sparkles, Mic, MicOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface ChatWindowProps {
@@ -37,6 +37,17 @@ export default function ChatWindow({ channelId }: ChatWindowProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
+  // Voice recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [liveTranscript, setLiveTranscript] = useState('');
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recognitionRef = useRef<any>(null);
+  const finalTranscriptRef = useRef('');
+
   const {
     messages,
     isLoading,
@@ -56,6 +67,99 @@ export default function ChatWindow({ channelId }: ChatWindowProps) {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText]);
+
+  // Cleanup recording on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (recognitionRef.current) try { recognitionRef.current.stop(); } catch { /* ignore */ }
+      const mr = mediaRecorderRef.current;
+      if (mr && mr.state !== 'inactive') {
+        mr.stop();
+        mr.stream.getTracks().forEach((t) => t.stop());
+      }
+    };
+  }, []);
+
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      finalTranscriptRef.current = '';
+      setLiveTranscript('');
+      audioChunksRef.current = [];
+
+      const mr = new MediaRecorder(stream);
+      mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mr.start(100);
+      mediaRecorderRef.current = mr;
+
+      setIsRecording(true);
+      setRecordingTime(0);
+      timerRef.current = setInterval(() => setRecordingTime((t) => t + 1), 1000);
+
+      // Start speech recognition if available
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRec) {
+        const rec = new SpeechRec();
+        rec.lang = 'pt-BR';
+        rec.continuous = true;
+        rec.interimResults = true;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        rec.onresult = (e: any) => {
+          let final = '';
+          let interim = '';
+          for (let i = 0; i < e.results.length; i++) {
+            if (e.results[i].isFinal) final += e.results[i][0].transcript + ' ';
+            else interim += e.results[i][0].transcript;
+          }
+          finalTranscriptRef.current = final.trim();
+          setLiveTranscript((final + interim).trim());
+        };
+        // Restart if auto-stopped (e.g. long silence)
+        rec.onend = () => {
+          if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+            try { rec.start(); } catch { /* ignore */ }
+          }
+        };
+        rec.onerror = () => { /* silent */ };
+        rec.start();
+        recognitionRef.current = rec;
+      }
+    } catch {
+      // Mic permission denied or not supported
+    }
+  };
+
+  const stopRecording = () => {
+    const mr = mediaRecorderRef.current;
+    if (!mr || mr.state === 'inactive') return;
+
+    const duration = recordingTime; // capture synchronously before async stop
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+
+    mr.onstop = () => {
+      const blob = new Blob(audioChunksRef.current, { type: mr.mimeType || 'audio/webm' });
+      const audioUrl = URL.createObjectURL(blob);
+      const text = finalTranscriptRef.current;
+      if (text) {
+        sendMessage(text, { audioUrl, duration });
+      }
+      mr.stream.getTracks().forEach((t) => t.stop());
+    };
+
+    if (recognitionRef.current) {
+      try { recognitionRef.current.stop(); } catch { /* ignore */ }
+      recognitionRef.current = null;
+    }
+
+    mr.stop();
+    setIsRecording(false);
+    setLiveTranscript('');
+    finalTranscriptRef.current = '';
+  };
 
   const handleSend = () => {
     if (!input.trim()) return;
@@ -169,6 +273,30 @@ export default function ChatWindow({ channelId }: ChatWindowProps) {
 
       {/* Input */}
       <div className="border-t border-border/50 bg-bg-secondary/60 backdrop-blur-sm px-4 py-3">
+        {/* Recording banner */}
+        <AnimatePresence>
+          {isRecording && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden mb-2"
+            >
+              <div className="flex items-center gap-3 rounded-xl bg-accent-red/10 border border-accent-red/25 px-3 py-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-accent-red animate-pulse shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-accent-red">Gravando {fmt(recordingTime)}</p>
+                  {liveTranscript ? (
+                    <p className="text-xs text-text-secondary truncate mt-0.5">{liveTranscript}</p>
+                  ) : (
+                    <p className="text-xs text-text-dim mt-0.5">Fale agora...</p>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <div className="flex items-end gap-2">
           <div className="flex-1 relative">
             <textarea
@@ -176,9 +304,10 @@ export default function ChatWindow({ channelId }: ChatWindowProps) {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Digite sua mensagem..."
+              placeholder={isRecording ? 'Gravando áudio...' : 'Digite sua mensagem...'}
+              disabled={isRecording}
               rows={1}
-              className="w-full resize-none rounded-2xl border border-border bg-bg-card px-4 py-3 text-sm text-text-primary placeholder:text-text-dim focus:border-accent-purple/60 focus:outline-none focus:ring-2 focus:ring-accent-purple/20 transition-all max-h-32"
+              className="w-full resize-none rounded-2xl border border-border bg-bg-card px-4 py-3 text-sm text-text-primary placeholder:text-text-dim focus:border-accent-purple/60 focus:outline-none focus:ring-2 focus:ring-accent-purple/20 transition-all max-h-32 disabled:opacity-60"
               style={{ minHeight: '44px' }}
             />
           </div>
@@ -189,6 +318,23 @@ export default function ChatWindow({ channelId }: ChatWindowProps) {
               className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent-red/10 border border-accent-red/30 text-accent-red transition-colors hover:bg-accent-red/20"
             >
               <Square size={15} />
+            </button>
+          ) : isRecording ? (
+            <button
+              onClick={stopRecording}
+              title="Parar gravação e enviar"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent-red/20 border border-accent-red/50 text-accent-red transition-colors hover:bg-accent-red/30 animate-pulse"
+            >
+              <MicOff size={15} />
+            </button>
+          ) : !input.trim() ? (
+            <button
+              onClick={startRecording}
+              disabled={isLoading}
+              title="Gravar mensagem de voz"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-bg-card border border-border text-text-secondary transition-colors hover:border-accent-purple/40 hover:text-accent-purple-light disabled:opacity-40"
+            >
+              <Mic size={15} />
             </button>
           ) : (
             <button

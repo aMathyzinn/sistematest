@@ -1,7 +1,8 @@
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import type { ChatMessage as ChatMessageType } from '@/lib/types';
-import { Bot, User, Swords, Zap, CheckCircle2, Plus, Target, LayoutDashboard, MessageSquarePlus, Clock, Bell, UserCog, Dumbbell, FolderPlus, FolderEdit, ListPlus, Trash2, PenLine, RefreshCw, FolderX, CheckSquare, Calendar } from 'lucide-react';
+import { Bot, User, Swords, Zap, CheckCircle2, Plus, Target, LayoutDashboard, MessageSquarePlus, Clock, Bell, UserCog, Dumbbell, FolderPlus, FolderEdit, ListPlus, Trash2, PenLine, RefreshCw, FolderX, CheckSquare, Calendar, Play, Pause, Mic } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
@@ -42,7 +43,11 @@ export default function ChatMessage({ message }: ChatMessageProps) {
             : 'bg-bg-card border border-border/60 text-text-primary rounded-bl-sm'
         }`}
       >
-        <p className="whitespace-pre-wrap">{message.content}</p>
+        {isUser && message.voiceData ? (
+          <VoiceBubble audioUrl={message.voiceData.audioUrl} duration={message.voiceData.duration} />
+        ) : (
+          <p className="whitespace-pre-wrap">{message.content}</p>
+        )}
 
         {/* Actions badges */}
         {message.actions && message.actions.length > 0 && (
@@ -102,6 +107,65 @@ export default function ChatMessage({ message }: ChatMessageProps) {
         </p>
       </div>
     </motion.div>
+  );
+}
+
+// Static waveform shape (decorative) — 20 bars with varying heights using sine
+const WAVE_HEIGHTS = Array.from({ length: 20 }, (_, i) =>
+  Math.round((Math.sin(i * 0.85 + 0.5) * 0.38 + 0.62) * 22)
+);
+
+function VoiceBubble({ audioUrl, duration }: { audioUrl: string; duration: number }) {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  useEffect(() => {
+    const audio = new Audio(audioUrl);
+    audioRef.current = audio;
+    audio.onended = () => { setPlaying(false); setProgress(0); };
+    audio.ontimeupdate = () => {
+      if (audio.duration) setProgress((audio.currentTime / audio.duration) * 100);
+    };
+    return () => { audio.pause(); audioRef.current = null; };
+  }, [audioUrl]);
+
+  const toggle = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playing) { audio.pause(); setPlaying(false); }
+    else { audio.play(); setPlaying(true); }
+  };
+
+  const fmt = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  return (
+    <div className="flex items-center gap-2.5 min-w-[180px] py-0.5">
+      <button
+        onClick={toggle}
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+      >
+        {playing ? <Pause size={13} /> : <Play size={13} />}
+      </button>
+
+      {/* Waveform bars */}
+      <div className="relative flex-1 flex items-end gap-[2px] h-6 overflow-hidden">
+        {WAVE_HEIGHTS.map((h, i) => {
+          const pct = ((i + 1) / WAVE_HEIGHTS.length) * 100;
+          const filled = pct <= progress;
+          return (
+            <div
+              key={i}
+              className={`w-[3px] rounded-full transition-colors ${filled ? 'bg-white' : 'bg-white/40'}`}
+              style={{ height: `${h}px` }}
+            />
+          );
+        })}
+      </div>
+
+      <span className="text-[11px] text-white/70 shrink-0 tabular-nums">{fmt(duration)}</span>
+      <Mic size={11} className="text-white/50 shrink-0" />
+    </div>
   );
 }
 

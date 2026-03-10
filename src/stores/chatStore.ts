@@ -31,7 +31,7 @@ interface ChatStreamState {
 
   // Actions
   loadMessages: (channelId: string) => Promise<void>;
-  sendMessage: (channelId: string, content: string) => Promise<void>;
+  sendMessage: (channelId: string, content: string, voiceData?: { audioUrl: string; duration: number }) => Promise<void>;
   cancelStream: () => void;
   clearError: () => void;
 }
@@ -75,7 +75,7 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
     }
   },
 
-  sendMessage: async (channelId, content) => {
+  sendMessage: async (channelId, content, voiceData) => {
     const state = get();
     if (!content.trim() || state.isStreaming) return;
 
@@ -83,10 +83,12 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
 
     // Save user message
     const userMessage = await db.addMessage({ channelId, role: 'user', content: content.trim() });
+    // Attach voiceData in-memory only (audio blobs are not persisted to DB)
+    const userMessageFinal: ChatMessage = voiceData ? { ...userMessage, voiceData } : userMessage;
     set((s) => ({
       messagesByChannel: {
         ...s.messagesByChannel,
-        [channelId]: [...(s.messagesByChannel[channelId] || []), userMessage],
+        [channelId]: [...(s.messagesByChannel[channelId] || []), userMessageFinal],
       },
     }));
 

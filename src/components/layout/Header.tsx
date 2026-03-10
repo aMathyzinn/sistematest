@@ -5,9 +5,11 @@ import { Settings, Zap } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function Header() {
-  const { level, profile } = useUserStore();
+  const { level, profile, userId } = useUserStore();
   const router = useRouter();
   const xpPercent = Math.min((level.xp / level.xpToNext) * 100, 100);
+  // Show a neutral placeholder while profile is still loading (never show "Jogador" permanently)
+  const displayName = profile?.name || (userId ? '...' : 'Jogador');
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg-primary/90 backdrop-blur-lg">
@@ -23,7 +25,7 @@ export default function Header() {
           </div>
           <div className="flex flex-col">
             <span className="text-xs text-text-dim">
-              {profile?.name || 'Jogador'}
+              {displayName}
             </span>
             {/* XP Bar */}
             <div className="xp-bar mt-1 h-1.5 w-24">

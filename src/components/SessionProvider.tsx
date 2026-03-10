@@ -22,6 +22,8 @@ export default function SessionProvider({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const greetedRef = useRef(false);
   const inFlightRef = useRef(false);
+  // Lets each effect invocation cancel the previous in-flight DB call response
+  const runIdRef = useRef(0);
 
   function playGreetingOnce() {
     if (greetedRef.current) return;
@@ -32,7 +34,7 @@ export default function SessionProvider({ children }: { children: React.ReactNod
 
   useEffect(() => {
     // Source of truth: cookie (works across PWA/browser on mobile).
-    // The store may also have values if login() was just called.
+    // getSessionCookie also checks sessionStorage + localStorage as fallbacks.
     const session = getSessionCookie();
     const tok = token || session?.token || null;
     const uid = userId || session?.userId || null;
@@ -53,9 +55,13 @@ export default function SessionProvider({ children }: { children: React.ReactNod
 
     if (inFlightRef.current) return;
     inFlightRef.current = true;
+    // Increment run ID — if this effect re-runs while the DB call is in flight,
+    // the stale response will be discarded (prevents double-logout bug).
+    const myRunId = ++runIdRef.current;
 
     getUserByToken(tok).then((account) => {
       inFlightRef.current = false;
+      if (myRunId !== runIdRef.current) return; // stale response — discard
       if (!account) {
         if (tok !== lastValidatedToken || Date.now() - lastValidatedAt >= VALIDATION_TTL_MS) {
           logout();
@@ -72,7 +78,8 @@ export default function SessionProvider({ children }: { children: React.ReactNod
       }
     }).catch(() => {
       inFlightRef.current = false;
-      // Network error — keep cookie session alive, _currentUserId already set
+      if (myRunId !== runIdRef.current) return; // stale response — discard
+      // Network error — keep session alive without redirecting
       setSession(uid, tok);
       playGreetingOnce();
     });

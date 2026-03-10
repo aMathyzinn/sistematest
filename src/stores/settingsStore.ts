@@ -88,7 +88,10 @@ export const useSettingsStore = create<SettingsState>()((set, get) => ({
 
   initAll: (apiKey, settings) => {
     const newState = {
-      apiKey,
+      // Prefer DB apiKey, but fall back to whatever is already stored locally.
+      // This prevents overwriting a valid local key with an empty DB value when
+      // updateUserApiKey failed on a slow/offline mobile connection.
+      apiKey: apiKey || get().apiKey,
       aiModel: settings.aiModel,
       pomodoro: settings.pomodoro,
       soundEnabled: settings.soundEnabled,

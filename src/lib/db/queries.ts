@@ -65,43 +65,108 @@ function readCookie(name: string): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-// Restore userId from cookie synchronously — runs before any React component
+// Restore userId synchronously at module load — runs before any React component
 // mounts, so DB queries in useEffect hooks work even on mobile PWA reload.
+// Priority: cookie → sessionStorage → localStorage user-cache
 let _currentUserId: string | null = null;
 if (typeof window !== 'undefined') {
+  // 1) Try cookie (primary — desktop browsers)
   try {
     const raw = readCookie('sistema_session');
     if (raw) {
       const data = JSON.parse(raw) as { userId?: string };
       if (data?.userId) _currentUserId = data.userId;
     }
-  } catch {
-    // cookie not available or parse error — _currentUserId stays null
+  } catch { /* ignore */ }
+
+  // 2) Fallback: sessionStorage (survives F5 even when cookie is cleared)
+  if (!_currentUserId) {
+    try {
+      const raw = sessionStorage.getItem('sistema_session');
+      if (raw) {
+        const data = JSON.parse(raw) as { userId?: string };
+        if (data?.userId) _currentUserId = data.userId;
+      }
+    } catch { /* ignore */ }
+  }
+
+  // 3) Fallback: localStorage session backup (set by setSession for iOS PWA resilience)
+  if (!_currentUserId) {
+    try {
+      const raw = localStorage.getItem('sistema_session_backup');
+      if (raw) {
+        const data = JSON.parse(raw) as { userId?: string };
+        if (data?.userId) _currentUserId = data.userId;
+      }
+    } catch { /* ignore */ }
+  }
+
+  // 4) Last resort: Zustand localStorage user-cache (iOS PWA where cookies are ephemeral)
+  if (!_currentUserId) {
+    try {
+      const raw = localStorage.getItem('sistema-user-v1');
+      if (raw) {
+        const data = JSON.parse(raw) as { userId?: string };
+        if (data?.userId) _currentUserId = data.userId;
+      }
+    } catch { /* ignore */ }
   }
 }
 
-/** Sets the active user and writes the session to a cookie (survives PWA reloads). */
+/** Sets the active user — writes to cookie, sessionStorage and localStorage backup. */
 export function setSession(userId: string | null, token: string | null): void {
   _currentUserId = userId;
   if (typeof document === 'undefined') return;
   if (userId && token) {
-    document.cookie = `sistema_session=${encodeURIComponent(JSON.stringify({ userId, token }))}; max-age=31536000; path=/; SameSite=Strict`;
+    const payload = JSON.stringify({ userId, token });
+    // Cookie (primary)
+    document.cookie = `sistema_session=${encodeURIComponent(payload)}; max-age=31536000; path=/; SameSite=Strict`;
+    // sessionStorage — survives page refresh (F5) even when browser blocks cookies
+    try { sessionStorage.setItem('sistema_session', payload); } catch { /* quota / private mode */ }
+    // localStorage backup — survives app close on iOS PWA (unlike cookies)
+    try { localStorage.setItem('sistema_session_backup', payload); } catch { /* quota / private mode */ }
   } else {
     document.cookie = 'sistema_session=; max-age=0; path=/; SameSite=Strict';
+    try { sessionStorage.removeItem('sistema_session'); } catch { /* ignore */ }
+    try { localStorage.removeItem('sistema_session_backup'); } catch { /* ignore */ }
   }
 }
 
-/** Reads the stored session from the cookie. */
+/** Reads the stored session, checking all storage sources in priority order. */
 export function getSessionCookie(): { userId: string; token: string } | null {
-  try {
-    const raw = readCookie('sistema_session');
+  const parse = (raw: string | null) => {
     if (!raw) return null;
-    const data = JSON.parse(raw) as { userId?: string; token?: string };
-    if (data?.userId && data?.token) return { userId: data.userId, token: data.token };
-    return null;
-  } catch {
-    return null;
-  }
+    try {
+      const d = JSON.parse(raw) as { userId?: string; token?: string };
+      return d?.userId && d?.token ? { userId: d.userId, token: d.token } : null;
+    } catch { return null; }
+  };
+
+  // 1) Cookie
+  const fromCookie = parse(readCookie('sistema_session'));
+  if (fromCookie) return fromCookie;
+
+  if (typeof window === 'undefined') return null;
+
+  // 2) sessionStorage (survives F5)
+  try {
+    const fromSession = parse(sessionStorage.getItem('sistema_session'));
+    if (fromSession) return fromSession;
+  } catch { /* private mode */ }
+
+  // 3) localStorage backup (persists across iOS PWA restarts)
+  try {
+    const fromLS = parse(localStorage.getItem('sistema_session_backup'));
+    if (fromLS) return fromLS;
+  } catch { /* private mode */ }
+
+  // 4) Zustand user-cache (token stored there too — last resort)
+  try {
+    const fromCache = parse(localStorage.getItem('sistema-user-v1'));
+    if (fromCache) return fromCache;
+  } catch { /* private mode */ }
+
+  return null;
 }
 
 function getUserId(): string {

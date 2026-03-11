@@ -39,6 +39,14 @@ export default function MissionsPage() {
     loadMissions();
   }, [loadMissions]);
 
+  // Reload whenever the page becomes visible again (e.g. user returns from chat
+  // after the AI created a mission — ensures new missions appear immediately)
+  useEffect(() => {
+    const onVisible = () => { if (document.visibilityState === 'visible') loadMissions(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [loadMissions]);
+
   const completed = missions.filter((m) => m.status === 'completed').length;
 
   return (

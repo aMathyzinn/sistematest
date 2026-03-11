@@ -262,7 +262,7 @@ export default function ChatWindow({ channelId }: ChatWindowProps) {
                 Ações executadas
               </div>
               {actionResults.map((result, i) => (
-                <p key={i} className="text-xs text-text-secondary">{result}</p>
+                <p key={i} className={`text-xs ${result.startsWith('❌') ? 'text-accent-red font-medium' : 'text-text-secondary'}`}>{result}</p>
               ))}
             </motion.div>
           )}

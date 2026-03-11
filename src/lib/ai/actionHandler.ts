@@ -10,29 +10,56 @@ import { playVoiceMissionCreated } from '@/lib/audio';
 // ============================================================
 
 export function parseAIResponse(rawText: string): AIResponse {
-  try {
-    // Tentar extrair JSON de dentro da resposta
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      return { message: rawText, actions: [] };
+  // Strip markdown code fences that some models add around JSON
+  const stripped = rawText
+    .replace(/^\s*```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim();
+
+  // Helper: try JSON.parse on a string, return null on failure
+  const tryParse = (s: string): { message?: string; actions?: unknown[] } | null => {
+    try { return JSON.parse(s); } catch { return null; }
+  };
+
+  // 1) Try to find a complete {...} block in the stripped text
+  const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    const parsed = tryParse(jsonMatch[0]);
+    if (parsed) {
+      const message = (typeof parsed.message === 'string' && parsed.message.trim())
+        ? parsed.message
+        : stripped.replace(/\{[\s\S]*\}/, '').trim() || '✓';
+      return {
+        message,
+        actions: Array.isArray(parsed.actions) ? parsed.actions as AIAction[] : [],
+      };
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
-    const message = parsed.message && parsed.message.trim()
-      ? parsed.message
-      : rawText.replace(/\{[\s\S]*\}/, '').trim() || '✓';
-    return {
-      message,
-      actions: Array.isArray(parsed.actions) ? parsed.actions : [],
-    };
-  } catch {
-    // JSON truncado — tentar extrair a message manualmente
-    const msgMatch = rawText.match(/"message"\s*:\s*"((?:[^"\\]|\\.)*)"/);
-    if (msgMatch) {
-      return { message: msgMatch[1], actions: [] };
+    // 2) JSON is truncated — extract message and best-effort extract started actions
+    const msgMatch = jsonMatch[0].match(/"message"\s*:\s*"((?:[^"\\]|\\.)*)/)
+    const message = msgMatch
+      ? msgMatch[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim()
+      : stripped.replace(/\{[\s\S]*\}/, '').trim() || '✓';
+
+    // Try to salvage any complete action objects from the partial actions array
+    const actions: AIAction[] = [];
+    const actionRegex = /\{\s*"type"\s*:\s*"([A-Z_]+)"\s*,\s*"payload"\s*:\s*(\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})/g;
+    let m: RegExpExecArray | null;
+    while ((m = actionRegex.exec(jsonMatch[0])) !== null) {
+      const payloadParsed = tryParse(m[2]);
+      if (payloadParsed) {
+        actions.push({ type: m[1] as AIAction['type'], payload: payloadParsed } as AIAction);
+      }
     }
-    return { message: rawText, actions: [] };
+    return { message, actions };
   }
+
+  // 3) No JSON at all — return the raw text as message (no actions possible)
+  const msgMatch2 = stripped.match(/"message"\s*:\s*"((?:[^"\\]|\\.)*)"/); 
+  if (msgMatch2) {
+    return { message: msgMatch2[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim(), actions: [] };
+  }
+  return { message: stripped || rawText, actions: [] };
 }
 
 // ============================================================
@@ -56,6 +83,15 @@ export async function executeActions(actions: AIAction[]): Promise<string[]> {
 }
 
 async function executeAction(action: AIAction): Promise<string> {
+  // Ensure the DB session is active before any DB write.
+  // If _currentUserId was null (e.g. race on mobile), pull the userId from the
+  // Zustand store (which is hydrated from localStorage cache at startup) and
+  // re-set the session so getUserId() works for this action.
+  const { userId, token } = useUserStore.getState();
+  if (userId && token) {
+    db.setSession(userId, token);
+  }
+
   switch (action.type) {
     case 'CREATE_TASK': {
       const task = await db.addTask({

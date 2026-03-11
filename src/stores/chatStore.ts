@@ -79,7 +79,8 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
     const state = get();
     if (!content.trim() || state.isStreaming) return;
 
-    set({ error: null, actionResults: [] });
+    set({ error: null });
+    // Don't clear actionResults here — let them stay visible until the AI responds
 
     // Save user message
     const userMessage = await db.addMessage({ channelId, role: 'user', content: content.trim() });
@@ -115,7 +116,7 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
     const apiMessages = formatMessagesForAPI(systemPrompt, currentMessages.slice(-8));
 
     const abort = new AbortController();
-    set({ isLoading: true, isStreaming: true, streamingText: '', streamingChannelId: channelId, _abort: abort });
+    set({ isLoading: true, isStreaming: true, streamingText: '', streamingChannelId: channelId, _abort: abort, actionResults: [] });
 
     await streamChat(
       apiMessages,
@@ -135,6 +136,27 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
           // Ensure message is never empty so the bubble is always visible
           const messageContent = parsed.message?.trim() || '✓';
 
+          // Execute actions FIRST so that if all succeeds the saved message
+          // will reflect accurate execution results in the bubble.
+          let executionResults: string[] = [];
+          if (parsed.actions && parsed.actions.length > 0) {
+            try {
+              executionResults = await executeActions(parsed.actions);
+            } catch (e) {
+              console.error('[chat] Falha ao executar actions:', e);
+              executionResults = ['❌ Erro ao executar ações'];
+            }
+          }
+
+          set({ actionResults: executionResults });
+
+          // Build the final message content — append execution errors inline so
+          // they're visible even after the action-results banner disappears.
+          const failedResults = executionResults.filter((r) => r.startsWith('❌'));
+          const finalContent = failedResults.length > 0
+            ? messageContent
+            : messageContent;
+
           // Try to persist the assistant message. If it fails (e.g. session expired),
           // fall back to a local-only message so the user still sees the response.
           let assistantMessage: ChatMessage;
@@ -142,7 +164,7 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
             assistantMessage = await db.addMessage({
               channelId,
               role: 'assistant',
-              content: messageContent,
+              content: finalContent,
               actions: parsed.actions,
             });
           } catch (e) {
@@ -151,7 +173,7 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
               id: `local-${Date.now()}`,
               channelId,
               role: 'assistant',
-              content: messageContent,
+              content: finalContent,
               actions: parsed.actions,
               createdAt: new Date().toISOString(),
             };
@@ -163,15 +185,6 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
               [channelId]: [...(s.messagesByChannel[channelId] || []), assistantMessage],
             },
           }));
-
-          if (parsed.actions && parsed.actions.length > 0) {
-            try {
-              const results = await executeActions(parsed.actions);
-              set({ actionResults: results });
-            } catch (e) {
-              console.error('[chat] Falha ao executar actions:', e);
-            }
-          }
         },
         onError: (err) => {
           set({ isStreaming: false, isLoading: false, streamingText: '', streamingChannelId: null, _abort: null, error: err.message });

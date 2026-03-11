@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import type { Mission, MissionStep } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Swords, Brain, Zap, Shield, Check, X, ChevronDown, Circle, CheckCircle2 } from 'lucide-react';
+import { Swords, Brain, Zap, Shield, Check, X, ChevronDown, Circle, CheckCircle2, BotMessageSquare } from 'lucide-react';
 import * as db from '@/lib/db/queries';
 import { useUserStore } from '@/stores/userStore';
 import { playVoiceMissionComplete, playVoiceAllMissionsDone } from '@/lib/audio';
+import MissionChatPopup from './MissionChatPopup';
 
 const missionTypeConfig = {
   physical:     { icon: Swords,  color: 'text-accent-orange', bg: 'bg-accent-orange/10', label: 'Físico' },
@@ -34,6 +35,7 @@ export default function MissionCard({ mission, onUpdate }: MissionCardProps) {
   const isFailed = mission.status === 'failed';
   const hasSteps = (mission.steps?.length || 0) > 0;
   const [expanded, setExpanded] = useState(!isCompleted && !isFailed);
+  const [showChat, setShowChat] = useState(false);
 
   const doneSteps = mission.steps?.filter((s) => s.done).length ?? 0;
   const totalSteps = mission.steps?.length ?? 0;
@@ -141,9 +143,9 @@ export default function MissionCard({ mission, onUpdate }: MissionCardProps) {
             </span>
           </div>
 
-          {/* Description (only if no steps, or if it's a short note) */}
-          {mission.description && !hasSteps && (
-            <p className="mt-1 text-xs text-text-dim">{mission.description}</p>
+          {/* Description */}
+          {mission.description && (
+            <p className="mt-1 text-xs text-text-dim leading-relaxed">{mission.description}</p>
           )}
 
           {/* Progress bar */}
@@ -191,6 +193,16 @@ export default function MissionCard({ mission, onUpdate }: MissionCardProps) {
               </button>
             </>
           )}
+          {/* Me ajude button */}
+          {!isCompleted && !isFailed && (
+            <button
+              onClick={() => setShowChat(true)}
+              className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-purple/10 text-accent-purple-light hover:bg-accent-purple/20 transition-colors"
+              title="Me ajude nesta missão"
+            >
+              <BotMessageSquare size={13} />
+            </button>
+          )}
           {hasSteps && (
             <button
               onClick={() => setExpanded(!expanded)}
@@ -225,6 +237,16 @@ export default function MissionCard({ mission, onUpdate }: MissionCardProps) {
               ))}
             </div>
           </motion.div>
+        )}
+      </AnimatePresence>
+      {/* Mission AI chat popup */}
+      <AnimatePresence>
+        {showChat && (
+          <MissionChatPopup
+            mission={mission}
+            onClose={() => setShowChat(false)}
+            onMissionUpdated={() => { onUpdate?.(); }}
+          />
         )}
       </AnimatePresence>
     </motion.div>

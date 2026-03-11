@@ -42,7 +42,7 @@ export async function streamChat(
         stream: true,
         messages,
         temperature: 0.4,
-        max_tokens: 2000,
+        max_tokens: 1200,
       }),
       signal,
     });

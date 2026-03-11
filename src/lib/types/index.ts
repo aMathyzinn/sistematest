@@ -227,7 +227,7 @@ export type AIAction =
   | { type: 'DELETE_TASK'; payload: { taskId: string } }
   | { type: 'UPDATE_TASK'; payload: { taskId: string; title?: string; description?: string; priority?: Task['priority']; category?: Task['category']; dueDate?: string } }
   | { type: 'CREATE_MISSION'; payload: Partial<Mission> & { title: string; type: MissionType } }
-  | { type: 'UPDATE_MISSION'; payload: { missionId: string; status?: Mission['status']; progress?: number; steps?: Mission['steps'] } }
+  | { type: 'UPDATE_MISSION'; payload: { missionId: string; status?: Mission['status']; progress?: number; steps?: Mission['steps']; title?: string; description?: string; xpReward?: number } }
   | { type: 'AWARD_XP'; payload: { amount: number; attribute?: keyof UserAttributes } }
   | { type: 'UPDATE_LAYOUT'; payload: { sections: Partial<UISection>[] } }
   | { type: 'CREATE_CHAT_CHANNEL'; payload: { name: string; icon: string; description: string } }

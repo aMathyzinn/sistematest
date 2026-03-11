@@ -103,12 +103,17 @@ export const useChatStore = create<ChatStreamState>()((set, get) => ({
     let recentExercises: import('@/lib/types').ExerciseLog[] = [];
     let activeProjects: import('@/lib/types').Project[] = [];
     try {
-      pendingTasks = await db.getTasksByStatus('pending');
       const today = new Date().toISOString().split('T')[0];
-      todayMissions = await db.getMissionsByDate(today);
-      recentExercises = await db.getExerciseLogs(10);
-      const allProjects = await db.getAllProjects();
-      activeProjects = allProjects.filter((p) => p.status === 'active' || p.status === 'paused');
+      const [_tasks, _missions, _exercises, _allProjects] = await Promise.all([
+        db.getTasksByStatus('pending'),
+        db.getMissionsByDate(today),
+        db.getExerciseLogs(10),
+        db.getAllProjects(),
+      ]);
+      pendingTasks = _tasks;
+      todayMissions = _missions;
+      recentExercises = _exercises;
+      activeProjects = _allProjects.filter((p) => p.status === 'active' || p.status === 'paused');
     } catch { /* ignore */ }
 
     const systemPrompt = buildSystemPrompt({ profile, level, pendingTasks, todayMissions, currentLayout: sections, recentExercises, activeProjects });

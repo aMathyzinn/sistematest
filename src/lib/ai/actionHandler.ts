@@ -285,7 +285,14 @@ async function executeAction(action: AIAction): Promise<string> {
       const missionUpdates: Record<string, unknown> = {};
       if (action.payload.status) missionUpdates.status = action.payload.status;
       if (action.payload.progress !== undefined) missionUpdates.progress = action.payload.progress;
-      if (action.payload.steps) missionUpdates.steps = action.payload.steps;
+      if (action.payload.steps) {
+        const rawSteps = action.payload.steps as import('@/lib/types').MissionStep[];
+        missionUpdates.steps = rawSteps.map((s, i) => ({ ...s, id: s.id || String(i + 1) }));
+        missionUpdates.target = rawSteps.length;
+      }
+      if (action.payload.title) missionUpdates.title = action.payload.title;
+      if (action.payload.description !== undefined) missionUpdates.description = action.payload.description;
+      if (action.payload.xpReward) missionUpdates.xpReward = Math.min(Math.max(1, action.payload.xpReward), 500);
       const mission = await db.updateMission(action.payload.missionId, missionUpdates as Partial<import('@/lib/types').Mission>);
       if (mission?.status === 'completed') {
         useUserStore.getState().addXP(mission.xpReward, 'consistency');

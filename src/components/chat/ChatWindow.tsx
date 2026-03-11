@@ -137,23 +137,25 @@ export default function ChatWindow({ channelId }: ChatWindowProps) {
     const mr = mediaRecorderRef.current;
     if (!mr || mr.state === 'inactive') return;
 
-    const duration = recordingTime; // capture synchronously before async stop
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    const duration = recordingTime;
+    // Capture transcript NOW before anything clears it
+    const capturedText = finalTranscriptRef.current || liveTranscript;
 
-    mr.onstop = () => {
-      const blob = new Blob(audioChunksRef.current, { type: mr.mimeType || 'audio/webm' });
-      const audioUrl = URL.createObjectURL(blob);
-      const text = finalTranscriptRef.current;
-      if (text) {
-        sendMessage(text, { audioUrl, duration });
-      }
-      mr.stream.getTracks().forEach((t) => t.stop());
-    };
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
 
     if (recognitionRef.current) {
       try { recognitionRef.current.stop(); } catch { /* ignore */ }
       recognitionRef.current = null;
     }
+
+    mr.onstop = () => {
+      const blob = new Blob(audioChunksRef.current, { type: mr.mimeType || 'audio/webm' });
+      const audioUrl = URL.createObjectURL(blob);
+      mr.stream.getTracks().forEach((t) => t.stop());
+      if (capturedText.trim()) {
+        sendMessage(capturedText.trim(), { audioUrl, duration });
+      }
+    };
 
     mr.stop();
     setIsRecording(false);

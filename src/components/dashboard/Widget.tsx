@@ -7,8 +7,17 @@ import TaskList from '@/components/tasks/TaskList';
 import PomodoroTimer from '@/components/pomodoro/PomodoroTimer';
 import MissionCard from '@/components/missions/MissionCard';
 import * as db from '@/lib/db/queries';
-import { ChevronRight, Clock } from 'lucide-react';
+import { ChevronRight, Clock, Swords, ListTodo, Timer, MessageSquare, BarChart2, CalendarDays } from 'lucide-react';
 import Link from 'next/link';
+
+const sectionIcons: Partial<Record<string, React.ElementType>> = {
+  tasks_preview:   ListTodo,
+  pomodoro_widget: Timer,
+  missions_today:  Swords,
+  routine_today:   CalendarDays,
+  daily_stats:     BarChart2,
+  chat_preview:    MessageSquare,
+};
 
 interface WidgetProps {
   section: UISection;
@@ -20,13 +29,13 @@ export default function Widget({ section }: WidgetProps) {
       return <XPBar />;
     case 'tasks_preview':
       return (
-        <WidgetWrapper title={section.title} href="/tasks">
+        <WidgetWrapper title={section.title} href="/tasks" type={section.type}>
           <TaskList limit={5} showAdd={false} showFilter={false} />
         </WidgetWrapper>
       );
     case 'pomodoro_widget':
       return (
-        <WidgetWrapper title={section.title} href="/pomodoro">
+        <WidgetWrapper title={section.title} href="/pomodoro" type={section.type}>
           <PomodoroTimer compact />
         </WidgetWrapper>
       );
@@ -38,13 +47,13 @@ export default function Widget({ section }: WidgetProps) {
       return <DailyStatsWidget title={section.title} />;
     case 'chat_preview':
       return (
-        <WidgetWrapper title={section.title} href="/chat">
+        <WidgetWrapper title={section.title} href="/chat" type={section.type}>
           <p className="text-sm text-text-secondary">Converse com o Sistema para organizar sua vida</p>
         </WidgetWrapper>
       );
     default:
       return (
-        <WidgetWrapper title={section.title}>
+        <WidgetWrapper title={section.title} type={section.type}>
           <p className="text-sm text-text-dim">{section.type}</p>
         </WidgetWrapper>
       );
@@ -55,15 +64,21 @@ function WidgetWrapper({
   title,
   children,
   href,
+  type,
 }: {
   title: string;
   children: React.ReactNode;
   href?: string;
+  type?: string;
 }) {
+  const TitleIcon = type ? sectionIcons[type] : undefined;
   return (
     <div className="glass-card p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
+        <div className="flex items-center gap-2">
+          {TitleIcon && <TitleIcon size={14} className="text-text-dim" />}
+          <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
+        </div>
         {href && (
           <Link href={href} className="flex items-center gap-0.5 text-[11px] text-accent-purple-light hover:text-accent-purple transition-colors">
             Ver tudo <ChevronRight size={11} />
@@ -93,7 +108,7 @@ function MissionsTodayWidget({ title }: { title: string }) {
   }, []);
 
   return (
-    <WidgetWrapper title={title} href="/missions">
+    <WidgetWrapper title={title} href="/missions" type="missions_today">
       {missions.length > 0 ? (
         <div className="space-y-2">
           {missions.slice(0, 3).map((m) => (
@@ -126,7 +141,7 @@ function RoutineTodayWidget({ title }: { title: string }) {
   }, []);
 
   return (
-    <WidgetWrapper title={title} href="/routine">
+    <WidgetWrapper title={title} href="/routine" type="routine_today">
       {blocks.length > 0 ? (
         <div className="space-y-1">
           {blocks.slice(0, 5).map((block) => (
@@ -164,7 +179,7 @@ function DailyStatsWidget({ title }: { title: string }) {
   }, []);
 
   return (
-    <WidgetWrapper title={title}>
+    <WidgetWrapper title={title} type="daily_stats">
       <div className="grid grid-cols-4 gap-2">
         <StatBox label="Tarefas" value={stats.tasks} color="accent-blue" />
         <StatBox label="Missões" value={stats.missions} color="accent-orange" />
@@ -177,9 +192,11 @@ function DailyStatsWidget({ title }: { title: string }) {
 
 function StatBox({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="flex flex-col items-center rounded-xl bg-bg-tertiary p-2">
-      <span className={`text-lg font-bold text-${color}`}>{value}</span>
-      <span className="text-[10px] text-text-dim">{label}</span>
+    <div className={`flex flex-col items-center rounded-xl bg-bg-tertiary border border-white/[0.04] p-2.5 gap-0.5`}
+      style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.25), 0 1px 0 rgba(255,255,255,0.04) inset' }}
+    >
+      <span className={`text-xl font-bold text-${color}`}>{value}</span>
+      <span className="text-[9px] text-text-dim text-center leading-tight">{label}</span>
     </div>
   );
 }

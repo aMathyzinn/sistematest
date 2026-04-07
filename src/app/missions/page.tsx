@@ -7,12 +7,12 @@ import type { Mission, MissionType } from '@/lib/types';
 import * as db from '@/lib/db/queries';
 import { Swords, Brain, Zap, Shield } from 'lucide-react';
 
-const filterConfig: { type: 'all' | MissionType; label: string; icon: React.ElementType }[] = [
-  { type: 'all', label: 'Todas', icon: Zap },
-  { type: 'physical', label: 'Físico', icon: Swords },
-  { type: 'mental', label: 'Mental', icon: Brain },
-  { type: 'productivity', label: 'Produtividade', icon: Zap },
-  { type: 'discipline', label: 'Disciplina', icon: Shield },
+const filterConfig: { type: 'all' | MissionType; label: string; icon: React.ElementType; color: string; active: string }[] = [
+  { type: 'all',          label: 'Todas',         icon: Zap,    color: 'text-accent-purple-light', active: 'bg-accent-purple/20 border-accent-purple/30 text-accent-purple-light' },
+  { type: 'physical',     label: 'Físico',         icon: Swords, color: 'text-accent-orange',       active: 'bg-accent-orange/20 border-accent-orange/30 text-accent-orange' },
+  { type: 'mental',       label: 'Mental',         icon: Brain,  color: 'text-accent-cyan',         active: 'bg-accent-cyan/20 border-accent-cyan/30 text-accent-cyan' },
+  { type: 'productivity', label: 'Produtividade',  icon: Zap,    color: 'text-accent-blue',         active: 'bg-accent-blue/20 border-accent-blue/30 text-accent-blue-light' },
+  { type: 'discipline',   label: 'Disciplina',     icon: Shield, color: 'text-accent-red',          active: 'bg-accent-red/20 border-accent-red/30 text-accent-red' },
 ];
 
 export default function MissionsPage() {
@@ -66,10 +66,10 @@ export default function MissionsPage() {
             <button
               key={f.type}
               onClick={() => setFilter(f.type)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors ${
+              className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-all border ${
                 filter === f.type
-                  ? 'bg-accent-purple/20 text-accent-purple-light'
-                  : 'bg-bg-card text-text-dim border border-border'
+                  ? f.active
+                  : 'bg-bg-card/60 text-text-dim border-white/[0.05] hover:border-white/[0.10]'
               }`}
             >
               <f.icon size={12} />

@@ -2,7 +2,7 @@
 
 import type { Task } from '@/lib/types';
 import { motion } from 'framer-motion';
-import { Check, Trash2, ChevronRight } from 'lucide-react';
+import { Check, Trash2, Code2, BookOpen, Dumbbell, Briefcase, Home, Target, Pin } from 'lucide-react';
 import * as db from '@/lib/db/queries';
 import { useUserStore } from '@/stores/userStore';
 
@@ -13,14 +13,14 @@ const priorityColors = {
   urgent: 'border-l-accent-red',
 };
 
-const categoryIcons: Record<string, string> = {
-  programming: '💻',
-  study: '📚',
-  health: '💪',
-  work: '💼',
-  personal: '🏠',
-  discipline: '🎯',
-  custom: '📌',
+const categoryConfig: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
+  programming: { icon: Code2,     color: 'text-accent-blue-light',  bg: 'bg-accent-blue/10' },
+  study:       { icon: BookOpen,  color: 'text-accent-cyan',         bg: 'bg-accent-cyan/10' },
+  health:      { icon: Dumbbell,  color: 'text-accent-orange',       bg: 'bg-accent-orange/10' },
+  work:        { icon: Briefcase, color: 'text-accent-yellow',       bg: 'bg-accent-yellow/10' },
+  personal:    { icon: Home,      color: 'text-accent-purple-light', bg: 'bg-accent-purple/10' },
+  discipline:  { icon: Target,    color: 'text-accent-red',          bg: 'bg-accent-red/10' },
+  custom:      { icon: Pin,       color: 'text-text-secondary',      bg: 'bg-bg-tertiary' },
 };
 
 interface TaskItemProps {
@@ -31,6 +31,8 @@ interface TaskItemProps {
 export default function TaskItem({ task, onUpdate }: TaskItemProps) {
   const { addXP } = useUserStore();
   const isCompleted = task.status === 'completed';
+  const catCfg = categoryConfig[task.category] ?? categoryConfig.custom;
+  const CatIcon = catCfg.icon;
 
   const handleComplete = async () => {
     if (isCompleted) return;
@@ -90,13 +92,15 @@ export default function TaskItem({ task, onUpdate }: TaskItemProps) {
       {/* Content */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-xs">{categoryIcons[task.category] || '📌'}</span>
+          <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${catCfg.bg}`}>
+            <CatIcon size={11} className={catCfg.color} />
+          </span>
           <p className={`text-sm font-medium truncate ${isCompleted ? 'line-through text-text-dim' : 'text-text-primary'}`}>
             {task.title}
           </p>
         </div>
         {task.description && (
-          <p className="mt-0.5 text-xs text-text-dim truncate">{task.description}</p>
+          <p className="mt-0.5 text-xs text-text-dim truncate pl-7">{task.description}</p>
         )}
       </div>
 

@@ -5,32 +5,41 @@ import { useUIStore } from '@/stores/uiStore';
 import ChatWindow from '@/components/chat/ChatWindow';
 import type { ChatChannel } from '@/lib/types';
 import * as db from '@/lib/db/queries';
-import { MessageSquare, ArrowLeft, Plus, Trash2, X, Bot, Brain, Target, Zap, BookOpen, Gamepad2, FileText, Star, Rocket, Music, Trophy, Lightbulb, Hash } from 'lucide-react';
+import { MessageSquare, ArrowLeft, Plus, Trash2, X, Bot, Brain, Target, Zap, BookOpen, Gamepad2, FileText, Star, Rocket, Music, Trophy, Lightbulb, Hash, Dumbbell, FolderKanban, TrendingUp, Repeat } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const EMOJIS = ['💬', '🎯', '🔥', '⚡', '🧠', '🎮', '📝', '🌟', '🚀', '🎵', '🏆', '💡'];
 
-const SYSTEM_ICONS: Record<string, React.ReactNode> = {
-  '🤖': <Bot size={18} />,
-  '💬': <MessageSquare size={18} />,
-  '🧠': <Brain size={18} />,
-  '🎯': <Target size={18} />,
-  '⚡': <Zap size={18} />,
-  '📝': <FileText size={18} />,
-  '🌟': <Star size={18} />,
-  '🚀': <Rocket size={18} />,
-  '🎵': <Music size={18} />,
-  '🏆': <Trophy size={18} />,
-  '💡': <Lightbulb size={18} />,
-  '📚': <BookOpen size={18} />,
-  '🎮': <Gamepad2 size={18} />,
+// Icon + color per channel icon key
+const CHANNEL_CONFIG: Record<string, { icon: React.ReactNode; color: string; bg: string; border: string }> = {
+  '🤖': { icon: <Bot size={18} />,          color: 'text-accent-purple-light', bg: 'from-accent-purple/20 to-indigo-500/10',  border: 'border-accent-purple/20' },
+  '💬': { icon: <MessageSquare size={18} />, color: 'text-accent-cyan',         bg: 'from-accent-cyan/20 to-blue-500/10',      border: 'border-accent-cyan/20' },
+  '🧠': { icon: <Brain size={18} />,         color: 'text-accent-blue-light',   bg: 'from-accent-blue/20 to-cyan-500/10',      border: 'border-accent-blue/20' },
+  '🎯': { icon: <Target size={18} />,        color: 'text-accent-red',           bg: 'from-accent-red/20 to-rose-500/10',      border: 'border-accent-red/20' },
+  '⚡': { icon: <Zap size={18} />,           color: 'text-accent-yellow',        bg: 'from-accent-yellow/20 to-orange-500/10', border: 'border-accent-yellow/20' },
+  '📝': { icon: <FileText size={18} />,      color: 'text-text-secondary',       bg: 'from-slate-500/20 to-slate-600/10',      border: 'border-slate-500/20' },
+  '🌟': { icon: <Star size={18} />,          color: 'text-accent-yellow',        bg: 'from-accent-yellow/20 to-amber-500/10',  border: 'border-accent-yellow/20' },
+  '🚀': { icon: <Rocket size={18} />,        color: 'text-accent-purple-light',  bg: 'from-accent-purple/20 to-pink-500/10',   border: 'border-accent-purple/20' },
+  '🎵': { icon: <Music size={18} />,         color: 'text-accent-cyan',          bg: 'from-accent-cyan/20 to-teal-500/10',     border: 'border-accent-cyan/20' },
+  '🏆': { icon: <Trophy size={18} />,        color: 'text-accent-yellow',        bg: 'from-accent-yellow/20 to-yellow-600/10', border: 'border-accent-yellow/20' },
+  '💡': { icon: <Lightbulb size={18} />,     color: 'text-accent-orange',        bg: 'from-accent-orange/20 to-yellow-500/10', border: 'border-accent-orange/20' },
+  '📚': { icon: <BookOpen size={18} />,      color: 'text-accent-blue-light',    bg: 'from-accent-blue/20 to-indigo-500/10',   border: 'border-accent-blue/20' },
+  '🎮': { icon: <Gamepad2 size={18} />,      color: 'text-accent-green',         bg: 'from-accent-green/20 to-emerald-500/10', border: 'border-accent-green/20' },
+  '💪': { icon: <Dumbbell size={18} />,      color: 'text-accent-orange',        bg: 'from-accent-orange/20 to-red-500/10',    border: 'border-accent-orange/20' },
+  '🗂️': { icon: <FolderKanban size={18} />, color: 'text-accent-yellow',        bg: 'from-accent-yellow/20 to-amber-600/10',  border: 'border-accent-yellow/20' },
+  '💰': { icon: <TrendingUp size={18} />,    color: 'text-accent-green',         bg: 'from-accent-green/20 to-emerald-600/10', border: 'border-accent-green/20' },
+  '🔄': { icon: <Repeat size={18} />,        color: 'text-accent-cyan',          bg: 'from-accent-cyan/20 to-sky-500/10',      border: 'border-accent-cyan/20' },
 };
 
-function ChannelIcon({ icon, isSystem, size = 18 }: { icon: string; isSystem: boolean; size?: number }) {
-  if (isSystem && SYSTEM_ICONS[icon]) {
-    return <>{SYSTEM_ICONS[icon]}</>;
-  }
-  // User channels: render emoji in a styled span
+const DEFAULT_CONFIG = { icon: null as React.ReactNode, color: 'text-text-secondary', bg: 'from-slate-600/20 to-slate-700/10', border: 'border-white/10' };
+
+function getChannelConfig(icon: string) {
+  return CHANNEL_CONFIG[icon] ?? DEFAULT_CONFIG;
+}
+
+function ChannelIcon({ icon, size = 18 }: { icon: string; size?: number }) {
+  const cfg = getChannelConfig(icon);
+  if (cfg.icon) return <>{cfg.icon}</>;
   return <span style={{ fontSize: size - 2, lineHeight: 1 }}>{icon}</span>;
 }
 
@@ -103,6 +112,7 @@ export default function ChatPage() {
 
   // Chat view
   if (activeChannel) {
+    const cfg = getChannelConfig(activeChannel.icon);
     return (
       <div className="flex h-full flex-col">
           <div className="flex items-center gap-3 border-b border-white/[0.04] bg-bg-secondary/80 backdrop-blur-xl px-4 py-2.5">
@@ -112,8 +122,8 @@ export default function ChatPage() {
             >
               <ArrowLeft size={18} />
             </button>
-            <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-purple/20 to-indigo-500/10 border border-accent-purple/20 text-accent-purple-light">
-              <ChannelIcon icon={activeChannel.icon} isSystem={activeChannel.isSystem} />
+            <div className={`flex h-9 w-9 items-center justify-center rounded-2xl bg-gradient-to-br ${cfg.bg} border ${cfg.border} ${cfg.color}`}>
+              <ChannelIcon icon={activeChannel.icon} />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-text-primary leading-tight">{activeChannel.name}</p>
@@ -132,7 +142,10 @@ export default function ChatPage() {
   return (
     <div className="px-4 py-3 space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-text-primary">Chats</h2>
+          <div>
+            <h2 className="text-base font-bold text-text-primary">Chats</h2>
+            <p className="text-[10px] text-text-dim mt-0.5">Seus canais de conversa</p>
+          </div>
           <button
             onClick={() => setShowNewChat(true)}
             className="flex items-center gap-1.5 rounded-xl bg-accent-purple/10 border border-accent-purple/30 px-3 py-1.5 text-xs font-medium text-accent-purple-light hover:bg-accent-purple/20 transition-colors"
@@ -194,7 +207,9 @@ export default function ChatPage() {
 
         {/* Channel list */}
         <div className="space-y-2">
-          {channels.map((channel, i) => (
+          {channels.map((channel, i) => {
+            const cfg = getChannelConfig(channel.icon);
+            return (
             <motion.div
               key={channel.id}
               initial={{ opacity: 0, y: 10 }}
@@ -208,16 +223,17 @@ export default function ChatPage() {
                   setActiveChannel(channel);
                 }}
                 onContextMenu={(e) => { e.preventDefault(); setLongPress(channel.id === longPress ? null : channel.id); }}
-                className="flex w-full items-center gap-3 rounded-2xl bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] px-4 py-3.5 text-left transition-all hover:border-accent-purple/30 hover:bg-bg-hover/50 active:scale-[0.98]"
+                className="flex w-full items-center gap-3 rounded-2xl bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] px-4 py-3.5 text-left transition-all hover:border-white/[0.10] hover:bg-bg-hover/50 active:scale-[0.98] group"
+                style={{ boxShadow: '0 2px 12px rgba(0,0,0,0.3), 0 1px 0 rgba(255,255,255,0.04) inset' }}
               >
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-purple/15 to-indigo-500/10 border border-accent-purple/15 text-accent-purple-light">
-                  <ChannelIcon icon={channel.icon} isSystem={channel.isSystem} size={20} />
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${cfg.bg} border ${cfg.border} ${cfg.color} transition-transform group-hover:scale-105`}>
+                  <ChannelIcon icon={channel.icon} size={20} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-text-primary">{channel.name}</p>
                   <p className="text-xs text-text-dim truncate mt-0.5">{channel.description}</p>
                 </div>
-                <Hash size={13} className="text-text-dim/50 shrink-0" />
+                <Hash size={13} className="text-text-dim/40 shrink-0 group-hover:text-text-dim/70 transition-colors" />
               </button>
               {/* Delete button on long press / right click */}
               {longPress === channel.id && !channel.isSystem && (
@@ -231,7 +247,8 @@ export default function ChatPage() {
                 </motion.button>
               )}
             </motion.div>
-          ))}
+            );
+          })}
 
           {loading && channels.length === 0 && (
             <div className="py-12 flex flex-col items-center gap-3">

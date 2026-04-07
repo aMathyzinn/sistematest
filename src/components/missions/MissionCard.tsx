@@ -10,10 +10,10 @@ import { playVoiceMissionComplete, playVoiceAllMissionsDone } from '@/lib/audio'
 import MissionChatPopup from './MissionChatPopup';
 
 const missionTypeConfig = {
-  physical:     { icon: Swords,  color: 'text-accent-orange', bg: 'bg-accent-orange/10', label: 'Físico' },
-  mental:       { icon: Brain,   color: 'text-accent-cyan',   bg: 'bg-accent-cyan/10',   label: 'Mental' },
-  productivity: { icon: Zap,     color: 'text-accent-blue',   bg: 'bg-accent-blue/10',   label: 'Produtividade' },
-  discipline:   { icon: Shield,  color: 'text-accent-red',    bg: 'bg-accent-red/10',    label: 'Disciplina' },
+  physical:     { icon: Swords,  color: 'text-accent-orange',       bg: 'bg-accent-orange/10',    label: 'Físico',         strip: 'from-accent-orange/40 to-transparent', glow: 'rgba(249,115,22,0.12)' },
+  mental:       { icon: Brain,   color: 'text-accent-cyan',         bg: 'bg-accent-cyan/10',      label: 'Mental',         strip: 'from-accent-cyan/40 to-transparent',   glow: 'rgba(6,182,212,0.12)' },
+  productivity: { icon: Zap,     color: 'text-accent-blue',         bg: 'bg-accent-blue/10',      label: 'Produtividade',  strip: 'from-accent-blue/40 to-transparent',   glow: 'rgba(59,130,246,0.12)' },
+  discipline:   { icon: Shield,  color: 'text-accent-red',          bg: 'bg-accent-red/10',       label: 'Disciplina',     strip: 'from-accent-red/40 to-transparent',    glow: 'rgba(239,68,68,0.12)' },
 };
 
 const progressColor = {
@@ -121,7 +121,14 @@ export default function MissionCard({ mission, onUpdate }: MissionCardProps) {
           ? 'border-accent-red/15 bg-accent-red/[0.03] opacity-60'
           : 'border-white/[0.06] bg-bg-card backdrop-blur-sm'
       }`}
+      style={!isCompleted && !isFailed ? {
+        boxShadow: `0 2px 16px rgba(0,0,0,0.35), 0 0 0 0 transparent, 0 0 20px ${config.glow}, 0 1px 0 rgba(255,255,255,0.04) inset`
+      } : undefined}
     >
+      {/* Colored accent strip at top */}
+      {!isCompleted && !isFailed && (
+        <div className={`h-[2px] w-full bg-gradient-to-r ${config.strip}`} />
+      )}
       {/* Header */}
       <div className="flex items-start gap-3 p-3">
         <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${config.bg}`}>

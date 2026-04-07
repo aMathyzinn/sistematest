@@ -5,11 +5,11 @@ import { Zap, Shield, Eye, Repeat, Dumbbell, BookOpen } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const attributeConfig = {
-  discipline: { label: 'Disciplina', icon: Shield, color: 'text-accent-red' },
-  focus: { label: 'Foco', icon: Eye, color: 'text-accent-blue' },
-  consistency: { label: 'Consistência', icon: Repeat, color: 'text-accent-green' },
-  strength: { label: 'Força', icon: Dumbbell, color: 'text-accent-orange' },
-  knowledge: { label: 'Conhecimento', icon: BookOpen, color: 'text-accent-cyan' },
+  discipline:  { label: 'Disciplina',    icon: Shield,   color: 'text-accent-red',          bar: 'bg-accent-red' },
+  focus:       { label: 'Foco',          icon: Eye,      color: 'text-accent-blue',          bar: 'bg-accent-blue' },
+  consistency: { label: 'Consistência',  icon: Repeat,   color: 'text-accent-green',         bar: 'bg-accent-green' },
+  strength:    { label: 'Força',         icon: Dumbbell, color: 'text-accent-orange',        bar: 'bg-accent-orange' },
+  knowledge:   { label: 'Conhecimento',  icon: BookOpen, color: 'text-accent-cyan',          bar: 'bg-accent-cyan' },
 };
 
 export default function XPBar() {
@@ -58,11 +58,21 @@ export default function XPBar() {
         {(Object.entries(attributeConfig) as [keyof typeof attributeConfig, typeof attributeConfig[keyof typeof attributeConfig]][]).map(
           ([key, config]) => {
             const value = level.attributes[key];
+            const pct = Math.min((value / 100) * 100, 100);
             return (
-              <div key={key} className="flex flex-col items-center gap-1">
-                <config.icon size={14} className={config.color} />
-                <span className="text-[10px] text-text-dim">{config.label.slice(0, 4)}</span>
-                <span className="text-xs font-bold text-text-primary">{value}</span>
+              <div key={key} className="flex flex-col items-center gap-1.5">
+                <div className={`flex h-7 w-7 items-center justify-center rounded-lg bg-bg-tertiary border border-white/[0.06]`}>
+                  <config.icon size={13} className={config.color} />
+                </div>
+                <div className="w-full h-1 rounded-full bg-bg-tertiary overflow-hidden">
+                  <motion.div
+                    className={`h-full rounded-full ${config.bar}`}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${pct}%` }}
+                    transition={{ duration: 0.6, delay: 0.1 }}
+                  />
+                </div>
+                <span className="text-[9px] font-bold text-text-secondary">{value}</span>
               </div>
             );
           }

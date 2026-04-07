@@ -104,8 +104,8 @@ export default function ChatPage() {
   // Chat view
   if (activeChannel) {
     return (
-      <div className="flex h-[100dvh] flex-col">
-          <div className="flex items-center gap-3 border-b border-border/60 bg-bg-secondary/95 backdrop-blur-lg px-4 py-3">
+      <div className="flex h-full flex-col">
+          <div className="flex items-center gap-3 border-b border-white/[0.04] bg-bg-secondary/80 backdrop-blur-xl px-4 py-2.5">
             <button
               onClick={() => setActiveChannel(null)}
               className="rounded-xl p-2 text-text-dim hover:text-text-primary hover:bg-bg-hover transition-colors"
@@ -130,9 +130,9 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="px-4 py-4 space-y-3">
+    <div className="px-4 py-3 space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-text-primary">Chats</h2>
+          <h2 className="text-base font-bold text-text-primary">Chats</h2>
           <button
             onClick={() => setShowNewChat(true)}
             className="flex items-center gap-1.5 rounded-xl bg-accent-purple/10 border border-accent-purple/30 px-3 py-1.5 text-xs font-medium text-accent-purple-light hover:bg-accent-purple/20 transition-colors"
@@ -149,7 +149,7 @@ export default function ChatPage() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="rounded-2xl bg-bg-card border border-border p-4 space-y-3"
+              className="glass-card p-4 space-y-3"
             >
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-text-primary">Novo Chat</p>
@@ -208,7 +208,7 @@ export default function ChatPage() {
                   setActiveChannel(channel);
                 }}
                 onContextMenu={(e) => { e.preventDefault(); setLongPress(channel.id === longPress ? null : channel.id); }}
-                className="flex w-full items-center gap-3 rounded-2xl bg-bg-card border border-border/50 px-4 py-3.5 text-left transition-all hover:border-accent-purple/40 hover:bg-bg-hover active:scale-[0.99]"
+                className="flex w-full items-center gap-3 rounded-2xl bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] px-4 py-3.5 text-left transition-all hover:border-accent-purple/30 hover:bg-bg-hover/50 active:scale-[0.98]"
               >
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-purple/15 to-indigo-500/10 border border-accent-purple/15 text-accent-purple-light">
                   <ChannelIcon icon={channel.icon} isSystem={channel.isSystem} size={20} />

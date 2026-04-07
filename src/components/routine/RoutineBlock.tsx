@@ -26,7 +26,7 @@ export default function RoutineBlock({ block, onDelete }: RoutineBlockProps) {
   };
 
   return (
-    <div className={`flex items-center gap-3 rounded-xl border-l-2 bg-bg-card border border-border px-3 py-3 ${categoryColors[block.category] || 'border-l-accent-purple'}`}>
+    <div className={`flex items-center gap-3 rounded-2xl border-l-2 bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] px-3 py-3 ${categoryColors[block.category] || 'border-l-accent-purple'}`}>
       <div className="flex flex-col items-center shrink-0">
         <span className="font-mono text-xs font-bold text-accent-blue">{block.startTime}</span>
         <div className="h-3 w-px bg-border my-0.5" />

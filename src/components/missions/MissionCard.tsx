@@ -114,12 +114,12 @@ export default function MissionCard({ mission, onUpdate }: MissionCardProps) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`rounded-xl border overflow-hidden transition-all ${
+      className={`rounded-2xl border overflow-hidden transition-all ${
         isCompleted
-          ? 'border-accent-green/30 bg-accent-green/5'
+          ? 'border-accent-green/20 bg-accent-green/[0.04]'
           : isFailed
-          ? 'border-accent-red/20 bg-accent-red/5 opacity-60'
-          : 'border-border bg-bg-card'
+          ? 'border-accent-red/15 bg-accent-red/[0.03] opacity-60'
+          : 'border-white/[0.06] bg-bg-card backdrop-blur-sm'
       }`}
     >
       {/* Header */}

@@ -70,9 +70,9 @@ export default function TaskItem({ task, onUpdate }: TaskItemProps) {
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 10 }}
-      className={`flex items-center gap-3 rounded-xl border-l-2 bg-bg-card px-3 py-3 transition-all ${
+      className={`flex items-center gap-3 rounded-2xl border-l-2 bg-bg-card/70 backdrop-blur-sm px-3 py-3 transition-all ${
         priorityColors[task.priority]
-      } ${isCompleted ? 'opacity-60' : 'border-r border-t border-b border-border'}`}
+      } ${isCompleted ? 'opacity-50' : 'border-r border-t border-b border-white/[0.05]'}`}
     >
       {/* Check button */}
       <button

@@ -185,7 +185,7 @@ export default function MissionChatPopup({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 z-50 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
 
@@ -195,8 +195,8 @@ export default function MissionChatPopup({
         animate={{ y: 0 }}
         exit={{ y: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="fixed bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-2xl bg-bg-secondary border-t border-border"
-        style={{ maxHeight: '72vh' }}
+        className="absolute bottom-0 left-0 right-0 z-50 flex flex-col rounded-t-3xl bg-bg-secondary border-t border-white/[0.06]"
+        style={{ maxHeight: '72%' }}
       >
         {/* Drag handle */}
         <div className="flex justify-center pt-2.5 pb-1">

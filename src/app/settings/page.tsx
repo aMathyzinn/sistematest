@@ -74,7 +74,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="px-4 py-4 space-y-6">
+    <div className="px-4 py-3 space-y-4 pb-8">
         {/* Header */}
         <div className="flex items-center gap-3">
           <button
@@ -87,7 +87,7 @@ export default function SettingsPage() {
         </div>
 
         {/* API Key */}
-        <section className="rounded-2xl bg-bg-card border border-border p-4 space-y-3">
+        <section className="glass-card p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Key size={16} className="text-accent-purple-light" />
             <h3 className="text-sm font-semibold text-text-primary">Chave de API (OpenRouter)</h3>
@@ -116,7 +116,7 @@ export default function SettingsPage() {
         </section>
 
         {/* AI Model */}
-        <section className="rounded-2xl bg-bg-card border border-border p-4 space-y-3">
+        <section className="glass-card p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Bot size={16} className="text-accent-blue" />
             <h3 className="text-sm font-semibold text-text-primary">Modelo de IA</h3>
@@ -137,7 +137,7 @@ export default function SettingsPage() {
         </section>
 
         {/* Pomodoro */}
-        <section className="rounded-2xl bg-bg-card border border-border p-4 space-y-3">
+        <section className="glass-card p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Timer size={16} className="text-accent-red" />
             <h3 className="text-sm font-semibold text-text-primary">Pomodoro</h3>
@@ -191,7 +191,7 @@ export default function SettingsPage() {
         </section>
 
         {/* Sound Effects */}
-        <section className="rounded-2xl bg-bg-card border border-border p-4 space-y-3">
+        <section className="glass-card p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Volume2 size={16} className="text-accent-cyan" />
             <h3 className="text-sm font-semibold text-text-primary">Efeitos Sonoros</h3>
@@ -232,7 +232,7 @@ export default function SettingsPage() {
         </section>
 
         {/* Notifications */}
-        <section className="rounded-2xl bg-bg-card border border-border p-4 space-y-3">
+        <section className="glass-card p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Bell size={16} className="text-accent-yellow" />
             <h3 className="text-sm font-semibold text-text-primary">Notificações</h3>
@@ -269,7 +269,7 @@ export default function SettingsPage() {
         </section>
 
         {/* Alterar Token */}
-        <section className="rounded-2xl bg-bg-card border border-border p-4 space-y-3">
+        <section className="glass-card p-4 space-y-3">
           <div className="flex items-center gap-2">
             <RefreshCw size={16} className="text-accent-green" />
             <h3 className="text-sm font-semibold text-text-primary">Alterar Token</h3>
@@ -299,7 +299,7 @@ export default function SettingsPage() {
         </section>
 
         {/* Logout */}
-        <section className="rounded-2xl bg-bg-card border border-border p-4 space-y-3">
+        <section className="glass-card p-4 space-y-3">
           <div className="flex items-center gap-2">
             <LogOut size={16} className="text-text-secondary" />
             <h3 className="text-sm font-semibold text-text-primary">Conta</h3>
@@ -317,7 +317,7 @@ export default function SettingsPage() {
         </section>
 
         {/* Reset */}
-        <section className="rounded-2xl bg-accent-red/5 border border-accent-red/20 p-4 space-y-3">
+        <section className="rounded-[20px] bg-accent-red/[0.04] border border-accent-red/15 backdrop-blur-sm p-4 space-y-3">
           <div className="flex items-center gap-2">
             <Trash2 size={16} className="text-accent-red" />
             <h3 className="text-sm font-semibold text-accent-red">Zona de Perigo</h3>

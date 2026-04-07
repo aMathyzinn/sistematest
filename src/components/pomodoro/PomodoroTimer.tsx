@@ -148,7 +148,7 @@ export default function PomodoroTimer({ compact = false }: { compact?: boolean }
 
   if (compact) {
     return (
-      <div className="flex items-center gap-3 rounded-xl bg-bg-card border border-border p-3">
+      <div className="flex items-center gap-3 rounded-2xl bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] p-3">
         <currentConfig.icon size={16} className={`text-${currentConfig.color}`} />
         <span className="font-mono text-lg font-bold text-text-primary">
           {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
@@ -170,7 +170,7 @@ export default function PomodoroTimer({ compact = false }: { compact?: boolean }
   }
 
   return (
-    <div className="rounded-2xl bg-bg-card border border-border p-6 text-center space-y-6">
+    <div className="glass-card p-6 text-center space-y-6">
       {/* Circle Timer */}
       <div className="relative mx-auto h-48 w-48">
         <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100">

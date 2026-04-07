@@ -101,7 +101,7 @@ export default function ProjectsPage() {
     : projects;
 
   return (
-    <div className="px-4 py-4 space-y-4">
+    <div className="px-4 py-3 space-y-3">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -138,7 +138,7 @@ export default function ProjectsPage() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="rounded-2xl bg-bg-card border border-border p-4 space-y-3"
+              className="glass-card p-4 space-y-3"
             >
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-text-primary">Novo Projeto</p>
@@ -272,7 +272,7 @@ function ProjectCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="rounded-xl bg-bg-card border border-border overflow-hidden"
+      className="rounded-2xl bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] overflow-hidden"
     >
       {/* Header row */}
       <div className="flex items-start gap-3 px-4 py-3">

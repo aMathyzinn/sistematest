@@ -1,28 +1,28 @@
 @import "tailwindcss";
 
 /* ============================================================
-   SISTEMA DE EVOLUÇÃO PESSOAL — DESIGN SYSTEM
-   Inspirado em Solo Leveling: cores escuras, roxo/azul neon
+   SISTEMA DE EVOLUÇÃO PESSOAL — DESIGN SYSTEM v2
+   Inspirado em Solo Leveling: dark theme, neon accents, glass UI
    ============================================================ */
 
 :root {
   /* Cores base */
-  --bg-primary: #0a0a0f;
-  --bg-secondary: #111118;
-  --bg-tertiary: #1a1a25;
-  --bg-card: #14141f;
-  --bg-hover: #1e1e2e;
+  --bg-primary: #08080d;
+  --bg-secondary: #0e0e16;
+  --bg-tertiary: #15151f;
+  --bg-card: rgba(16, 16, 26, 0.75);
+  --bg-hover: #1c1c2c;
 
   /* Texto */
-  --text-primary: #e2e8f0;
+  --text-primary: #e8ecf4;
   --text-secondary: #94a3b8;
-  --text-dim: #64748b;
-  --text-accent: #a78bfa;
+  --text-dim: #5a6578;
+  --text-accent: #b794f6;
 
   /* Cores de destaque */
-  --accent-purple: #7c3aed;
-  --accent-purple-light: #a78bfa;
-  --accent-purple-dark: #5b21b6;
+  --accent-purple: #8b5cf6;
+  --accent-purple-light: #b794f6;
+  --accent-purple-dark: #6d28d9;
   --accent-blue: #3b82f6;
   --accent-blue-light: #60a5fa;
   --accent-cyan: #06b6d4;
@@ -32,22 +32,27 @@
   --accent-orange: #f97316;
 
   /* XP / Nível */
-  --xp-bar-bg: #1e1b4b;
-  --xp-bar-fill: linear-gradient(90deg, #7c3aed, #3b82f6);
-  --xp-glow: 0 0 20px rgba(124, 58, 237, 0.4);
+  --xp-bar-bg: rgba(30, 27, 75, 0.6);
+  --xp-bar-fill: linear-gradient(90deg, #8b5cf6, #3b82f6);
+  --xp-glow: 0 0 20px rgba(139, 92, 246, 0.4);
 
   /* Borders */
-  --border-color: #1e293b;
-  --border-glow: rgba(124, 58, 237, 0.3);
+  --border-color: rgba(255, 255, 255, 0.06);
+  --border-glow: rgba(139, 92, 246, 0.3);
+
+  /* Glass */
+  --glass-bg: rgba(16, 16, 26, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-blur: 20px;
 
   /* Sombras */
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --shadow-glow-purple: 0 0 30px rgba(124, 58, 237, 0.2);
-  --shadow-glow-blue: 0 0 30px rgba(59, 130, 246, 0.2);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.3);
+  --shadow-glow-purple: 0 0 30px rgba(139, 92, 246, 0.15);
+  --shadow-glow-blue: 0 0 30px rgba(59, 130, 246, 0.15);
 
   /* Tamanho safe area (mobile) */
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --bottom-nav-height: 72px;
+  --safe-bottom: 0px;
+  --bottom-nav-height: 64px;
 }
 
 @theme inline {
@@ -79,21 +84,22 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-html {
-  scroll-behavior: smooth;
+html,
+body {
+  height: 100%;
+  overflow: hidden;
 }
 
 body {
-  background: var(--bg-primary);
+  background: #030305;
   color: var(--text-primary);
   font-family: var(--font-geist-sans, 'Inter', system-ui, -apple-system, sans-serif);
-  min-height: 100dvh;
   overscroll-behavior: none;
 }
 
 /* ---- Scrollbar custom ---- */
 ::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 
 ::-webkit-scrollbar-track {
@@ -101,8 +107,21 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--accent-purple-dark);
+  background: rgba(139, 92, 246, 0.25);
   border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.4);
+}
+
+/* ---- Glass card ---- */
+.glass-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border-radius: 20px;
 }
 
 /* ---- Glow effects ---- */
@@ -115,7 +134,7 @@ body {
 }
 
 .glow-text {
-  text-shadow: 0 0 10px rgba(124, 58, 237, 0.6), 0 0 40px rgba(124, 58, 237, 0.2);
+  text-shadow: 0 0 12px rgba(139, 92, 246, 0.5), 0 0 40px rgba(139, 92, 246, 0.15);
 }
 
 /* ---- XP Bar ---- */
@@ -132,20 +151,150 @@ body {
   box-shadow: var(--xp-glow);
 }
 
+/* ============================================================
+   PHONE FRAME SYSTEM
+   ============================================================ */
+
+.phone-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100dvh;
+  background: #030305;
+}
+
+@media (min-width: 768px) {
+  .phone-wrapper {
+    padding: 20px;
+    background:
+      radial-gradient(ellipse at 25% 15%, rgba(139, 92, 246, 0.07), transparent 55%),
+      radial-gradient(ellipse at 75% 85%, rgba(59, 130, 246, 0.05), transparent 55%),
+      radial-gradient(circle at 50% 50%, rgba(6, 182, 212, 0.03), transparent 70%),
+      #030305;
+  }
+}
+
+.phone-device {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+}
+
+@media (min-width: 768px) {
+  .phone-device {
+    width: 393px;
+    height: min(88dvh, 852px);
+    min-height: 640px;
+  }
+}
+
+/* Bezel */
+.phone-bezel {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .phone-bezel {
+    display: block;
+    position: absolute;
+    inset: -13px;
+    border-radius: 54px;
+    background: linear-gradient(160deg, #28282f 0%, #18181e 40%, #222228 100%);
+    box-shadow:
+      0 30px 80px rgba(0, 0, 0, 0.6),
+      0 0 0 1px rgba(255, 255, 255, 0.04),
+      inset 0 1px 0 rgba(255, 255, 255, 0.06),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+    z-index: -1;
+  }
+}
+
+/* Side buttons on bezel */
+.phone-btn {
+  position: absolute;
+  border-radius: 3px;
+  z-index: 2;
+}
+
+.phone-btn--vol-up {
+  left: -15px;
+  top: 105px;
+  width: 3px;
+  height: 30px;
+  background: linear-gradient(180deg, #3a3a42, #2a2a32, #3a3a42);
+}
+
+.phone-btn--vol-down {
+  left: -15px;
+  top: 148px;
+  width: 3px;
+  height: 30px;
+  background: linear-gradient(180deg, #3a3a42, #2a2a32, #3a3a42);
+}
+
+.phone-btn--power {
+  right: -15px;
+  top: 125px;
+  width: 3px;
+  height: 44px;
+  background: linear-gradient(180deg, #3a3a42, #2a2a32, #3a3a42);
+}
+
+/* Screen */
+.phone-screen {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-primary);
+  /* Creates containing block for position:fixed descendants */
+  transform: translateZ(0);
+}
+
+@media (min-width: 768px) {
+  .phone-screen {
+    border-radius: 42px;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  }
+}
+
+/* Status bar */
+.status-bar {
+  background: linear-gradient(180deg, rgba(8, 8, 13, 0.95), rgba(8, 8, 13, 0.7));
+}
+
+/* System nav bar */
+.system-nav {
+  background: linear-gradient(0deg, rgba(8, 8, 13, 0.95), rgba(8, 8, 13, 0.6));
+}
+
+/* App content area between status bar and system nav */
+.phone-app-area {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  min-height: 0;
+}
+
 /* ---- Animações ---- */
 @keyframes pulse-glow {
   0%, 100% {
-    box-shadow: 0 0 10px rgba(124, 58, 237, 0.3);
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.25);
   }
   50% {
-    box-shadow: 0 0 25px rgba(124, 58, 237, 0.6);
+    box-shadow: 0 0 25px rgba(139, 92, 246, 0.5);
   }
 }
 
 @keyframes slide-up {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
@@ -161,35 +310,50 @@ body {
 @keyframes level-up {
   0% {
     transform: scale(1);
-    box-shadow: 0 0 0 rgba(124, 58, 237, 0);
+    box-shadow: 0 0 0 rgba(139, 92, 246, 0);
   }
   50% {
-    transform: scale(1.2);
-    box-shadow: 0 0 60px rgba(124, 58, 237, 0.8);
+    transform: scale(1.15);
+    box-shadow: 0 0 50px rgba(139, 92, 246, 0.7);
   }
   100% {
     transform: scale(1);
-    box-shadow: 0 0 20px rgba(124, 58, 237, 0.3);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.25);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
   }
 }
 
 .animate-slide-up {
-  animation: slide-up 0.4s ease-out;
+  animation: slide-up 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .animate-fade-in {
-  animation: fade-in 0.3s ease-out;
+  animation: fade-in 0.25s ease-out;
 }
 
 .animate-pulse-glow {
-  animation: pulse-glow 2s infinite;
+  animation: pulse-glow 2.5s ease-in-out infinite;
 }
 
 .animate-level-up {
   animation: level-up 0.8s ease-out;
 }
 
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.06), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
 /* ---- Padding inferior para BottomNav ---- */
 .pb-safe {
-  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-bottom) + 16px);
+  padding-bottom: calc(var(--bottom-nav-height) + 12px);
 }

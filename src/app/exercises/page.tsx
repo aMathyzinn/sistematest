@@ -187,7 +187,7 @@ export default function ExercisesPage() {
   const topPRs = Object.values(prMap).sort((a, b) => b.est1RM - a.est1RM).slice(0, 6);
 
   return (
-    <div className="px-4 py-4 space-y-4">
+    <div className="px-4 py-3 space-y-3">
         {/* Error banner */}
         {error && (
           <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2 text-sm text-red-400 flex items-center justify-between">
@@ -231,7 +231,7 @@ export default function ExercisesPage() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="rounded-2xl bg-bg-card border border-border p-4 space-y-3"
+              className="glass-card p-4 space-y-3"
             >
               <div className="flex items-center justify-between">
                 <p className="text-sm font-semibold text-text-primary">Novo Exercício</p>
@@ -431,15 +431,15 @@ export default function ExercisesPage() {
           <div className="space-y-4">
             {/* Summary cards */}
             <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-xl bg-bg-card border border-border p-3 text-center">
+              <div className="rounded-2xl bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] p-3 text-center">
                 <p className="text-xl font-bold text-text-primary">{weeklySessionCount}</p>
                 <p className="text-[10px] text-text-dim mt-0.5 leading-tight">Sessões<br />esta semana</p>
               </div>
-              <div className="rounded-xl bg-bg-card border border-border p-3 text-center">
+              <div className="rounded-2xl bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] p-3 text-center">
                 <p className="text-xl font-bold text-text-primary">{weeklyTotalSets}</p>
                 <p className="text-[10px] text-text-dim mt-0.5 leading-tight">Séries<br />esta semana</p>
               </div>
-              <div className="rounded-xl bg-bg-card border border-border p-3 text-center">
+              <div className="rounded-2xl bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] p-3 text-center">
                 <p className="text-xl font-bold text-text-primary">
                   {weeklyVolume >= 1000 ? `${(weeklyVolume / 1000).toFixed(1)}t` : weeklyVolume > 0 ? `${weeklyVolume}kg` : '—'}
                 </p>
@@ -448,7 +448,7 @@ export default function ExercisesPage() {
             </div>
 
             {/* Muscle volume vs hypertrophy targets */}
-            <div className="rounded-xl bg-bg-card border border-border p-4">
+            <div className="rounded-2xl bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] p-4">
               <div className="flex items-center gap-2 mb-3">
                 <BarChart2 size={14} className="text-accent-purple-light" />
                 <p className="text-sm font-semibold text-text-primary">Volume por Grupo Muscular</p>
@@ -484,7 +484,7 @@ export default function ExercisesPage() {
 
             {/* Personal Records */}
             {topPRs.length > 0 && (
-              <div className="rounded-xl bg-bg-card border border-border p-4">
+              <div className="rounded-2xl bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <Award size={14} className="text-accent-orange" />
                   <p className="text-sm font-semibold text-text-primary">Recordes Pessoais (1RM est.)</p>
@@ -509,7 +509,7 @@ export default function ExercisesPage() {
             )}
 
             {/* Rest recommendation */}
-            <div className="rounded-xl bg-bg-card border border-border p-4">
+            <div className="rounded-2xl bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Zap size={14} className="text-accent-yellow" />
                 <p className="text-sm font-semibold text-text-primary">Dicas para Hipertrofia</p>
@@ -563,7 +563,7 @@ function ExerciseCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="rounded-xl bg-bg-card border border-border overflow-hidden"
+      className="rounded-2xl bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] overflow-hidden"
     >
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent-purple/10 text-lg">

@@ -10,20 +10,13 @@ import { useUIStore } from '@/stores/uiStore';
 
 /**
  * Persistent shell that lives in root layout.tsx and NEVER unmounts between
- * page navigations. This prevents the header/nav/SoundProvider from being
- * torn down and rebuilt every time the user switches tabs.
+ * page navigations. Now contained inside PhoneFrame's .phone-app-area.
  *
- * CRITICAL: {children} must always be rendered at the same structural
- * position in the JSX tree. If {children} moves between different container
- * elements when state changes (hideAppShell, isSettings), React treats them
- * as different component instances and unmounts/remounts the page — resetting
- * all local state (e.g. activeChannel in chat page).
+ * The phone frame provides StatusBar above and SystemNavBar below, so
+ * this shell manages only the app's own chrome (Header, BottomNav, FAB, etc).
  *
- * Visibility rules:
- *  - /onboarding, /  → public pages, minimal wrapper (different routes anyway)
- *  - /settings       → header + nav hidden; page has its own back-button header
- *  - hideAppShell=true (set by chat page when a channel is open) → shell hidden
- *  - everything else → full shell
+ * Scrolling happens inside the <main> element, not the body. This keeps
+ * the header non-scrolling and the bottom nav always visible.
  */
 export default function PersistentShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -32,21 +25,24 @@ export default function PersistentShell({ children }: { children: React.ReactNod
   const isPublic = pathname === '/' || pathname?.startsWith('/onboarding');
   const isSettings = pathname?.startsWith('/settings');
 
-  // Public pages are different routes entirely — remounting is fine here
   if (isPublic) {
-    return <SoundProvider>{children}</SoundProvider>;
+    return (
+      <SoundProvider>
+        <div className="h-full flex flex-col overflow-y-auto bg-bg-primary">
+          {children}
+        </div>
+      </SoundProvider>
+    );
   }
 
-  // For all authenticated pages, always render {children} inside the same
-  // <main> element so React never remounts the page on shell state changes.
   const showHeader = !isSettings && !hideAppShell;
   const showNav = !isSettings && !hideAppShell;
 
   return (
     <SoundProvider>
-      <div className="min-h-dvh bg-bg-primary">
+      <div className="h-full flex flex-col bg-bg-primary relative">
         {showHeader && <Header />}
-        <main className={showNav ? 'mx-auto max-w-lg pb-safe' : 'min-h-dvh'}>
+        <main className={`flex-1 overflow-y-auto min-h-0 ${showNav ? 'pb-safe' : ''}`}>
           {children}
         </main>
         {showNav && <BottomNav />}

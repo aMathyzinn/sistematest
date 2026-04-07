@@ -22,10 +22,10 @@ export default function BottomNav() {
   const router = useRouter();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-bg-secondary/95 backdrop-blur-lg"
-      style={{ paddingBottom: 'var(--safe-bottom)' }}
+    <nav
+      className="absolute bottom-0 left-0 right-0 z-50 border-t border-white/[0.04] bg-bg-secondary/80 backdrop-blur-xl"
     >
-      <div className="mx-auto flex max-w-lg items-center justify-around px-2 py-2">
+      <div className="flex items-center justify-around px-1 py-1.5">
         {tabs.map((tab) => {
           const isActive = pathname?.startsWith(tab.href);
           return (
@@ -34,20 +34,20 @@ export default function BottomNav() {
               onClick={() => router.push(tab.href)}
               data-sound={isActive ? 'none' : 'nav'}
               data-tutorial={tab.tutorial}
-              className={`flex flex-col items-center gap-0.5 rounded-xl px-3 py-1.5 transition-all duration-200 ${
+              className={`relative flex flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 transition-all duration-200 active:scale-95 ${
                 isActive
                   ? 'text-accent-purple-light'
                   : 'text-text-dim hover:text-text-secondary'
               }`}
             >
-              <tab.icon
-                size={22}
-                className={isActive ? 'drop-shadow-[0_0_8px_rgba(124,58,237,0.6)]' : ''}
-              />
-              <span className="text-[10px] font-medium">{tab.label}</span>
               {isActive && (
-                <div className="h-0.5 w-4 rounded-full bg-accent-purple mt-0.5" />
+                <div className="absolute inset-0 rounded-2xl bg-accent-purple/10" />
               )}
+              <tab.icon
+                size={20}
+                className={`relative z-10 ${isActive ? 'drop-shadow-[0_0_6px_rgba(139,92,246,0.5)]' : ''}`}
+              />
+              <span className="relative z-10 text-[9px] font-medium">{tab.label}</span>
             </button>
           );
         })}

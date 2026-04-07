@@ -50,11 +50,11 @@ export default function MissionsPage() {
   const completed = missions.filter((m) => m.status === 'completed').length;
 
   return (
-    <div className="px-4 py-4 space-y-4">
+    <div className="px-4 py-3 space-y-3">
         <XPBar />
 
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-text-primary">Missões de Hoje</h2>
+          <h2 className="text-base font-bold text-text-primary">Missões de Hoje</h2>
           <span className="text-xs text-text-dim">
             {completed}/{missions.length} concluídas
           </span>

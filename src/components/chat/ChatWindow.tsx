@@ -274,7 +274,7 @@ export default function ChatWindow({ channelId }: ChatWindowProps) {
       </div>
 
       {/* Input */}
-      <div className="border-t border-border/50 bg-bg-secondary/60 backdrop-blur-sm px-4 py-3">
+      <div className="border-t border-white/[0.04] bg-bg-secondary/50 backdrop-blur-sm px-4 py-3">
         {/* Recording banner */}
         <AnimatePresence>
           {isRecording && (

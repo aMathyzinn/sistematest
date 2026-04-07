@@ -18,7 +18,7 @@ export default function Home() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-bg-primary">
+    <div className="flex flex-1 flex-col items-center justify-center bg-bg-primary">
       {/* Splash screen */}
       <div className="flex flex-col items-center gap-6 animate-fade-in">
         <div className="relative">

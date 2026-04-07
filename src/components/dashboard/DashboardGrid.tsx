@@ -10,9 +10,9 @@ export default function DashboardGrid() {
     .sort((a, b) => a.order - b.order);
 
   return (
-    <div className="space-y-4 px-4 py-4">
+    <div className="space-y-3 px-4 py-3">
       {visibleSections.map((section, index) => (
-        <div key={section.id} className="animate-slide-up" style={{ animationDelay: `${index * 80}ms` }}>
+        <div key={section.id} className="animate-slide-up" style={{ animationDelay: `${index * 60}ms` }}>
           <Widget section={section} />
         </div>
       ))}

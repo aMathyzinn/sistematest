@@ -15,9 +15,9 @@ interface AppShellProps {
 export default function AppShell({ children, showHeader = true, showNav = true }: AppShellProps) {
   return (
     <SoundProvider>
-      <div className="min-h-dvh bg-bg-primary">
+      <div className="h-full flex flex-col bg-bg-primary">
         {showHeader && <Header />}
-        <main className={`mx-auto max-w-lg ${showNav ? 'pb-safe' : ''}`}>
+        <main className={`flex-1 overflow-y-auto ${showNav ? 'pb-safe' : ''}`}>
           {children}
         </main>
         {showNav && <BottomNav />}

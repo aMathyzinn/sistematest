@@ -358,10 +358,10 @@ export default function OnboardingPage() {
   const isTokenStep = step === 0;
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center bg-bg-primary px-4">
+    <div className="flex flex-1 flex-col items-center justify-center bg-bg-primary px-4 overflow-y-auto">
       {/* Full-page spectrum wallpaper — visible only on API key step */}
       {step === 4 && (
-        <div className="pointer-events-none fixed inset-x-0 bottom-0 h-48 z-0 opacity-30">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 z-0 opacity-30">
           <AudioSpectrum color="#86efac" mirror />
         </div>
       )}

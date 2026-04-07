@@ -17,11 +17,11 @@ export default function XPBar() {
   const xpPercent = Math.min((level.xp / level.xpToNext) * 100, 100);
 
   return (
-    <div className="rounded-2xl bg-bg-card border border-border p-4 space-y-4">
+    <div className="glass-card p-4 space-y-4">
       {/* Level + XP Bar */}
       <div className="flex items-center gap-4">
         <motion.div
-          className="flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-purple/20 border border-accent-purple/30"
+          className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-accent-purple/25 to-accent-blue/15 border border-accent-purple/20"
           whileHover={{ scale: 1.05 }}
         >
           <div className="text-center">
@@ -33,13 +33,13 @@ export default function XPBar() {
 
         <div className="flex-1">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-medium text-text-secondary">Level {level.level}</span>
-            <span className="text-xs text-text-dim flex items-center gap-1">
-              <Zap size={10} className="text-accent-yellow" />
+            <span className="text-[11px] font-medium text-text-secondary">Level {level.level}</span>
+            <span className="text-[11px] text-text-dim flex items-center gap-1">
+              <Zap size={9} className="text-accent-yellow" />
               {level.xp}/{level.xpToNext}
             </span>
           </div>
-          <div className="xp-bar h-2.5 w-full">
+          <div className="xp-bar h-2 w-full">
             <motion.div
               className="xp-bar-fill h-full"
               initial={{ width: 0 }}
@@ -47,7 +47,7 @@ export default function XPBar() {
               transition={{ duration: 0.8, ease: 'easeOut' }}
             />
           </div>
-          <p className="mt-1 text-[10px] text-text-dim">
+          <p className="mt-1 text-[9px] text-text-dim">
             Total: {level.totalXp} XP
           </p>
         </div>

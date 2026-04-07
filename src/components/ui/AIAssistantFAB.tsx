@@ -139,7 +139,7 @@ export default function AIAssistantFAB() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setOpen(false)}
-            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            className="absolute inset-0 z-40 bg-black/40 backdrop-blur-sm"
           />
         )}
       </AnimatePresence>
@@ -153,8 +153,8 @@ export default function AIAssistantFAB() {
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed bottom-0 inset-x-0 mx-auto max-w-lg z-50 flex flex-col rounded-t-2xl bg-bg-primary border-t border-border shadow-2xl"
-            style={{ height: '65dvh' }}
+            className="absolute bottom-0 inset-x-0 z-50 flex flex-col rounded-t-3xl bg-bg-primary border-t border-white/[0.06] shadow-2xl"
+            style={{ height: '65%' }}
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
@@ -306,7 +306,7 @@ export default function AIAssistantFAB() {
             exit={{ scale: 0, opacity: 0 }}
             whileTap={{ scale: 0.9 }}
             onClick={() => setOpen(true)}
-            className="fixed bottom-[72px] right-4 z-30 flex h-12 w-12 items-center justify-center rounded-2xl text-white"
+            className="absolute bottom-[72px] right-3 z-30 flex h-11 w-11 items-center justify-center rounded-2xl text-white"
             style={{
               background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
               boxShadow: '0 4px 20px rgba(139,92,246,0.45)',

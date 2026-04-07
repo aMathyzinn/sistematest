@@ -59,8 +59,8 @@ export default function FloatingPomodoroTimer() {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.7, y: 20 }}
           transition={{ type: 'spring', stiffness: 340, damping: 28 }}
-          className="fixed z-[200] cursor-grab active:cursor-grabbing"
-          style={{ right: 16, bottom: 'calc(var(--bottom-nav-height, 64px) + var(--safe-bottom, 0px) + 16px)' }}
+          className="absolute z-[200] cursor-grab active:cursor-grabbing"
+          style={{ right: 12, bottom: 'calc(var(--bottom-nav-height, 64px) + 12px)' }}
         >
           <div
             className="flex items-center gap-2.5 rounded-2xl border border-border bg-bg-card/95 px-3 py-2.5 shadow-2xl"

@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PWARegister from "@/components/PWARegister";
 import SessionProvider from "@/components/SessionProvider";
+import PhoneFrame from "@/components/layout/PhoneFrame";
 import PersistentShell from "@/components/layout/PersistentShell";
 
 const geistSans = Geist({
@@ -31,7 +32,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#0a0a0f",
+  themeColor: "#08080d",
 };
 
 export default function RootLayout({
@@ -46,9 +47,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SessionProvider>
-          <PersistentShell>
-            {children}
-          </PersistentShell>
+          <PhoneFrame>
+            <PersistentShell>
+              {children}
+            </PersistentShell>
+          </PhoneFrame>
         </SessionProvider>
         <PWARegister />
       </body>

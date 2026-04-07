@@ -61,12 +61,12 @@ function WidgetWrapper({
   href?: string;
 }) {
   return (
-    <div className="rounded-2xl bg-bg-card border border-border p-4 space-y-3">
+    <div className="glass-card p-4 space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-text-primary">{title}</h3>
         {href && (
-          <Link href={href} className="flex items-center gap-0.5 text-xs text-accent-purple-light hover:text-accent-purple transition-colors">
-            Ver tudo <ChevronRight size={12} />
+          <Link href={href} className="flex items-center gap-0.5 text-[11px] text-accent-purple-light hover:text-accent-purple transition-colors">
+            Ver tudo <ChevronRight size={11} />
           </Link>
         )}
       </div>

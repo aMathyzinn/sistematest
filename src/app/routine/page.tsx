@@ -49,8 +49,8 @@ export default function RoutinePage() {
   };
 
   return (
-    <div className="px-4 py-4 space-y-4">
-        <h2 className="text-lg font-bold text-text-primary">Rotina & Alarmes</h2>
+    <div className="px-4 py-3 space-y-3">
+        <h2 className="text-base font-bold text-text-primary">Rotina & Alarmes</h2>
 
         {/* Tabs */}
         <div className="flex gap-2">
@@ -94,7 +94,7 @@ export default function RoutinePage() {
             </div>
 
             {showAddBlock && (
-              <div className="rounded-xl bg-bg-card border border-border p-3 space-y-2">
+              <div className="rounded-2xl bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] p-3 space-y-2">
                 <input
                   type="text"
                   value={newBlock.title}

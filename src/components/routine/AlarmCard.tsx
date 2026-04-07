@@ -30,7 +30,7 @@ export default function AlarmCard({ alarm, onUpdate }: AlarmCardProps) {
   };
 
   return (
-    <div className={`flex items-center gap-3 rounded-xl bg-bg-card border border-border px-4 py-3 transition-opacity ${!alarm.isActive ? 'opacity-50' : ''}`}>
+    <div className={`flex items-center gap-3 rounded-2xl bg-bg-card/60 backdrop-blur-sm border border-white/[0.05] px-4 py-3 transition-opacity ${!alarm.isActive ? 'opacity-50' : ''}`}>
       <span className="text-lg">{config.icon}</span>
 
       <div className="flex-1">

@@ -380,7 +380,7 @@ export default function TutorialOverlay({ onComplete }: Props) {
     <>
       {/* Dark / spotlight overlay */}
       <motion.div
-        className="fixed inset-0 z-[9990] pointer-events-auto"
+        className="absolute inset-0 z-[9990] pointer-events-auto"
         style={{ background: overlayBg }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -393,7 +393,7 @@ export default function TutorialOverlay({ onComplete }: Props) {
         {current.type === 'fullscreen' && (
           <motion.div
             key="blur-layer"
-            className="fixed inset-0 z-[9991] pointer-events-none"
+            className="absolute inset-0 z-[9991] pointer-events-none"
             style={{ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' }}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -461,7 +461,7 @@ export default function TutorialOverlay({ onComplete }: Props) {
 
       {/* Card */}
       {current.type === 'fullscreen' ? (
-        <div className="fixed inset-0 z-[9996] flex items-center justify-center px-5 pointer-events-none">
+        <div className="absolute inset-0 z-[9996] flex items-center justify-center px-5 pointer-events-none">
           <AnimatePresence mode="wait" custom={dir}>
             <motion.div
               key={`card-${step}`}
